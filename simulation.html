@@ -1,0 +1,52 @@
+<section class="block" id="simulation" style="border-top: none;">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="idx">— SECTION 02 / SIMULATIONS</div>
+        <h2 style="margin-top:6px;">시뮬레이션</h2>
+      </div>
+      <div class="desc">
+        가설을 세우고, 변수를 바꾸고, 결과를 예측하세요.<br>
+        바이브 코딩으로 직접 제작한 시뮬레이션 12종.
+      </div>
+    </div>
+
+    <div class="content-grid" id="simGrid"></div>
+  </div>
+</section>
+
+<script>
+(function() {
+  const SIMS = [
+    { t:'진자 운동',     sub:'SIM-01', ico:'M12 3 V9 M12 9 a7 7 0 1 0 5 12 M12 3 a1.5 1.5 0 1 1 0 0.1' },
+    { t:'자유 낙하',     sub:'SIM-02', ico:'M12 4 V18 M12 18 L8 14 M12 18 L16 14 M6 21 H18' },
+    { t:'빛의 굴절',     sub:'SIM-03', ico:'M4 8 L12 12 L20 16 M4 20 H20 M12 12 L16 20' },
+    { t:'음파 간섭',     sub:'SIM-04', ico:'M4 12 Q 8 6 12 12 T 20 12 M4 16 Q 8 20 12 16 T 20 16' },
+    { t:'전기 회로',     sub:'SIM-05', ico:'M3 12 H9 M15 12 H21 M9 8 V16 H15 V8 Z M12 4 V8 M12 16 V20' },
+    { t:'자기장 벡터',   sub:'SIM-06', ico:'M5 7 V17 M9 7 V17 M13 7 V17 M17 7 V17 M5 7 L7 5 M9 7 L11 5 M13 7 L15 5 M17 7 L19 5' },
+    { t:'파동 방정식',   sub:'SIM-07', ico:'M3 12 Q 6 4 9 12 T 15 12 T 21 12' },
+    { t:'열 확산',       sub:'SIM-08', ico:'M12 3 V21 M3 12 H21 M5.6 5.6 L18.4 18.4 M18.4 5.6 L5.6 18.4' },
+    { t:'분자 운동',     sub:'SIM-09', ico:'M7 7 a2 2 0 1 1 4 0 2 2 0 1 1 -4 0 M15 9 a1.5 1.5 0 1 1 3 0 1.5 1.5 0 1 1 -3 0 M9 15 a2 2 0 1 1 4 0 2 2 0 1 1 -4 0 M16 17 a1.5 1.5 0 1 1 3 0 1.5 1.5 0 1 1 -3 0' },
+    { t:'중력과 궤도',   sub:'SIM-10', ico:'M12 12 m -9 0 a9 5 0 1 0 18 0 9 5 0 1 0 -18 0 M12 12 a2 2 0 1 1 0 0.1' },
+    { t:'화학 반응',     sub:'SIM-11', ico:'M9 3 V8 L4 17 a2 2 0 0 0 2 3 H18 a2 2 0 0 0 2 -3 L15 8 V3 M9 3 H15 M9 13 H15' },
+    { t:'생태계 시뮬',   sub:'SIM-12', ico:'M12 21 V14 M8 14 C 8 10 6 8 4 8 C 4 12 6 14 8 14 M16 14 C 16 10 18 8 20 8 C 20 12 18 14 16 14 M12 14 C 12 8 10 4 8 4 C 8 9 10 14 12 14 M12 14 C 12 8 14 4 16 4 C 16 9 14 14 12 14' }
+  ];
+  const simGrid = document.getElementById('simGrid');
+  SIMS.forEach((s) => {
+    const el = document.createElement('div');
+    el.className = 'content-card';
+    el.innerHTML = `
+      <div class="thumb">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="${s.ico}"/>
+        </svg>
+      </div>
+      <div class="meta">
+        <div class="title">${s.t}</div>
+        <div class="num">${s.sub}</div>
+      </div>
+    `;
+    simGrid.appendChild(el);
+  });
+})();
+</script>

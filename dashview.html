@@ -1,0 +1,207 @@
+<section class="dashview">
+  <div class="container">
+    <!-- Back to science experiments -->
+    <a href="#science" class="back-link">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 3 L3 7 L9 11 M3 7 H12"/>
+      </svg>
+      과학실험 도구 목록
+    </a>
+
+    <!-- Page header -->
+    <div class="view-head">
+      <div class="mark" id="dvMark"></div>
+      <div>
+        <h1 id="dvTitle">—</h1>
+        <div class="sub" id="dvSub">—</div>
+      </div>
+      <div class="ext-group">
+        <a href="#" id="dvExtLink" target="_blank" rel="noopener" class="ext" title="새 탭에서 열기">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 3 H3 V11 H11 V9 M7 3 H11 V7 M11 3 L6 8"/>
+          </svg>
+          새 탭으로 열기
+        </a>
+        <div class="ipad-notice">
+          <svg class="ipad-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="1.5" width="10" height="13" rx="1.5"/>
+            <path d="M7 12 H9"/>
+          </svg>
+          <span>아이패드는 <b>Bluefy</b> 앱을 통해 접속 후 <b>새 탭으로 열기</b>를 통해 대시보드를 실행해 주세요</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Iframe -->
+    <div class="frame-wrap">
+      <div class="frame-loading" id="dvLoading">
+        <div>
+          <div class="spin"></div>
+          Loading dashboard…
+        </div>
+      </div>
+      <iframe id="dashFrame" title="Dashboard" src="about:blank" allow="serial https://aisteam.netlify.app/"></iframe>
+    </div>
+
+    <div class="frame-meta">
+      <div>SOURCE · <code id="dvSource">—</code></div>
+      <div>EMBEDDED · RENDERED INLINE</div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function() {
+  // Built-in dashboards (the two top-level dashboard buttons on the science page)
+  const DASHES = {
+    gage: {
+      file: '01_gage.html',
+      title: '통합 대시보드',
+      subtitle: 'GAGE DASHBOARD · 다양한 측정 도구를 한 화면에',
+      alt: false,
+      icon: 'M3 3 h8 v9 h-8 z M13 3 h8 v5 h-8 z M13 10 h8 v11 h-8 z M3 14 h8 v7 h-8 z'
+    },
+    total: {
+      file: '00_total.html',
+      title: '분석 대시보드',
+      subtitle: 'TOTAL ANALYSIS · 데이터 분석 중심 워크스페이스',
+      alt: true,
+      icon: 'M3 17 L9 11 L13 15 L21 6'
+    }
+  };
+
+  const key = window.__routeParam;
+  let cfg = DASHES[key];
+
+  // If not a top-level dashboard, check if it's a sensor with a file
+  if (!cfg) {
+    const sensor = (window.SENSORS || []).find(s => s.key === key);
+    if (sensor && sensor.file) {
+      cfg = {
+        file: sensor.file,
+        title: sensor.name + ' 센서',
+        subtitle: sensor.key.toUpperCase() + ' SENSOR · 단위 ' + sensor.unit + ' · 실시간 데이터',
+        alt: false,
+        icon: sensor.icon
+      };
+    }
+  }
+
+  const container = document.querySelector('.dashview .container');
+
+  // Unknown key → show friendly error
+  if (!cfg) {
+    container.innerHTML = `
+      <a href="#science" class="back-link">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 3 L3 7 L9 11 M3 7 H12"/>
+        </svg>
+        과학실험 도구 목록
+      </a>
+      <div class="load-error">
+        <h3>대시보드를 찾을 수 없습니다</h3>
+        <p>요청하신 대시보드 "<code>${key || '(없음)'}</code>"는 등록되어 있지 않거나 연결된 파일이 없습니다.</p>
+      </div>`;
+    return;
+  }
+
+  // Fill header
+  const mark = document.getElementById('dvMark');
+  mark.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${cfg.icon}"/></svg>`;
+  if (cfg.alt) mark.classList.add('alt');
+
+  document.getElementById('dvTitle').textContent = cfg.title;
+  document.getElementById('dvSub').textContent = cfg.subtitle;
+  document.getElementById('dvExtLink').href = cfg.file;
+  document.getElementById('dvSource').textContent = cfg.file;
+
+  // Load iframe
+  const iframe = document.getElementById('dashFrame');
+  const loading = document.getElementById('dvLoading');
+
+  iframe.addEventListener('load', () => {
+    // Hide the loading overlay once the real file finishes loading (not the initial about:blank)
+    if (iframe.src && !iframe.src.endsWith('about:blank')) {
+      loading.classList.add('hide');
+      // Inject mobile-only CSS into the dashboard to guarantee a readable chart height.
+      // Same-origin (served from the same folder) lets us reach into the iframe document.
+      try {
+        const doc = iframe.contentDocument;
+        if (doc && !doc.getElementById('ai-steam-mobile-fix')) {
+          const style = doc.createElement('style');
+          style.id = 'ai-steam-mobile-fix';
+          // This CSS targets the specific structure used in the sensor dashboards
+          // (viewed inside our iframe on mobile). The dashboards use a fixed-viewport
+          // layout where #dp and .tcont have `overflow:hidden`, causing the chart's
+          // bottom (X-axis) to be clipped when the iframe is only 680px tall.
+          // We release that clipping on mobile so the outer #content (overflow-y:auto)
+          // can scroll through the full content.
+          style.textContent = `
+            @media (max-width: 560px) {
+              /* Release overflow clipping inside the data panel so
+                 content can extend past and be scrolled by #content */
+              #dp {
+                overflow: visible !important;
+                min-height: auto !important;
+              }
+              .tcont,
+              .tcont.on {
+                overflow: visible !important;
+              }
+
+              /* Give the chart wrapper a stable, readable height instead of
+                 flex:1/min-height:0 which collapses it on small screens */
+              .cw {
+                flex: none !important;
+                height: 240px !important;
+                min-height: 240px !important;
+              }
+
+              /* Make sure iOS momentum scroll works on the designated scroller */
+              #content {
+                -webkit-overflow-scrolling: touch !important;
+              }
+
+              /* Generic fallback for any other Chart.js wrappers */
+              div:has(> canvas) {
+                min-height: 220px;
+              }
+              canvas {
+                max-height: 100% !important;
+                width: 100% !important;
+              }
+            }
+          `;
+          doc.head.appendChild(style);
+
+          // Nudge Chart.js to recompute size after the new CSS applies.
+          try {
+            const w = iframe.contentWindow;
+            if (w && w.Chart && w.Chart.instances) {
+              const instances = typeof w.Chart.instances === 'function'
+                ? w.Chart.instances()
+                : Object.values(w.Chart.instances);
+              setTimeout(() => {
+                instances.forEach(c => { try { c.resize(); } catch(e){} });
+              }, 80);
+            }
+          } catch(e) { /* ignore */ }
+        }
+      } catch(e) {
+        // Cross-origin – silently skip
+      }
+    }
+  });
+
+  // Safety net - hide loader after 4s regardless (handles cross-origin edge cases)
+  setTimeout(() => loading.classList.add('hide'), 4000);
+
+  // Start loading the requested dashboard file
+  iframe.src = cfg.file;
+
+  // Cleanup on navigation away
+  window.__pageCleanup = function() {
+    try { iframe.src = 'about:blank'; } catch (e) {}
+  };
+})();
+</script>

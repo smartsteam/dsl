@@ -1,0 +1,3564 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>💉 공기압 측정 대시보드 V2 - 초·중학생용</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://ezon-ble-sdk.pages.dev/ezon-ble.iife.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ══════════ 변수 ══════════ */
+:root{
+  --bg:#f0f4ff;--surface:#fff;--border:#d8e2f8;--bm:#b8c8f0;
+  --acc:#4f7ef8;--acc-dk:#3060d8;--acc-s:#e8effe;
+  --warm:#ff6b4a;--warm-s:#fff0ec;
+  --grn:#2dbe78;--grn-s:#e8faf1;
+  --pur:#8b5cf6;--amb:#f59e0b;--amb-s:#fffbeb;
+  --text:#1e2d6b;--sub:#5b6ea8;--muted:#9aabd4;
+  --barrel-stroke: #7399bb7c;
+  --plunger-color: #334155;
+  --air-blue: #0ea5e9;
+  --hdr:56px; --f-base:15px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;font-size:var(--f-base);background:var(--bg);color:var(--text);height:100dvh;overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--bm);border-radius:3px}
+button{font-family:'Noto Sans KR',sans-serif;-webkit-appearance:none}
+
+/* ══════════ 앱 레이아웃 ══════════ */
+#app{display:flex;flex-direction:column;height:100dvh}
+
+/* ══════════ 헤더 ══════════ */
+#header{
+  height:var(--hdr);flex-shrink:0;background:var(--surface);
+  border-bottom:2px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:8px;
+  box-shadow:0 2px 14px rgba(79,126,248,.10);z-index:30;
+}
+.h-logo{font-size:22px;flex-shrink:0}
+.h-title{font-size:16px;font-weight:900;color:var(--text);white-space:nowrap}
+.h-badge{font-size:11px;font-weight:700;background:var(--acc-s);color:var(--acc);padding:3px 9px;border-radius:20px;border:1.5px solid var(--border);white-space:nowrap}
+
+/* 개수 선택 */
+#cnt-area{flex:1;display:flex;align-items:center;justify-content:center;gap:8px}
+.cnt-label{font-size:13px;font-weight:700;color:var(--sub);white-space:nowrap}
+.cnt-btns{display:flex;gap:4px;background:var(--bg);border-radius:11px;padding:3px;border:1.5px solid var(--border)}
+.cnt-btn{
+  width:36px;height:30px;border-radius:8px;border:none;
+  background:transparent;color:var(--sub);font-size:15px;font-weight:900;
+  cursor:pointer;transition:all .15s;
+}
+.cnt-btn.on{background:var(--acc);color:#fff;box-shadow:0 2px 8px rgba(79,126,248,.4)}
+.cnt-btn:not(.on):hover{background:var(--acc-s);color:var(--acc)}
+
+.h-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+#cs{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#f0f0f0;color:#888;border:1px solid #ddd;transition:all .3s;white-space:nowrap}
+#cs.ok{background:var(--grn-s);color:var(--grn);border-color:#7de0ab}
+#cs.ing{background:var(--amb-s);color:var(--amb);border-color:#f9c74f}
+.hbtn{padding:6px 14px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;border:1.5px solid var(--border);background:var(--surface);color:var(--sub);white-space:nowrap;display:flex;align-items:center;gap:5px}
+.hbtn:hover{border-color:var(--acc);color:var(--acc)}
+.hbtn.pri{background:var(--text);color:#fff;border-color:var(--text)}
+.hbtn.pri:hover{background:var(--acc-dk)}
+.hbtn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ══════════ 메인 3단 ══════════ */
+#main{display:flex;flex:1;overflow:hidden}
+
+/* ══════════ 사이드 영역 ══════════ */
+.side-area{display:flex;flex-shrink:0;overflow:hidden}
+#la{flex-direction:row}
+#ra{flex-direction:row}
+
+/* 드로어 */
+.drawer{overflow:hidden;display:flex;flex-direction:column;background:var(--surface);transition:width .3s cubic-bezier(.4,0,.2,1);min-height:0}
+#ld{width:268px;border-right:2px solid var(--border)}
+#ld.col{width:0;border-right:none}
+#rd{width:284px;border-left:2px solid var(--border)}
+#rd.col{width:0;border-left:none}
+.d-inner{display:flex;flex-direction:column;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:10px;padding-bottom:20px}
+#ld .d-inner{width:268px;min-width:268px}
+#rd .d-inner{width:284px;min-width:284px}
+
+/* 장치 카드 hover 테두리 라운드 fix */
+.dev-card{border-radius:10px!important;overflow:hidden!important;transition:border-color .15s}
+.dev-card:hover{border-color:var(--acc)!important}
+.dev-card .card-tog{border-radius:10px}
+.dev-card[data-expanded="true"] .card-tog{border-radius:10px 10px 0 0}
+
+/* 토글 버튼 */
+.dtog{
+  width:24px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;border:none;outline:none;background:var(--acc);color:#fff;
+  transition:background .18s,width .15s;z-index:5;
+}
+.dtog:hover{background:var(--acc-dk);width:28px}
+#lt{border-radius:0 11px 11px 0;box-shadow:2px 0 8px rgba(79,126,248,.2)}
+/* #rt는 콘텐츠 쪽(왼쪽) 테두리를 둥글게 */
+#rt{border-radius:11px 0 0 11px;box-shadow:-2px 0 8px rgba(79,126,248,.2)}
+.tlabel{writing-mode:vertical-rl;font-size:12px;font-weight:900;letter-spacing:.08em;user-select:none;display:flex;align-items:center;gap:4px}
+.tarr{font-size:10px;transition:transform .3s}
+
+/* 드로어 카드 */
+.dc{background:var(--bg);border-radius:10px;border:1.5px solid var(--border);margin-bottom:8px;overflow:hidden;flex-shrink:0}
+.dch{display:flex;align-items:center;gap:6px;padding:9px 11px;font-size:13px;font-weight:700;color:var(--text);cursor:pointer;user-select:none;background:var(--surface);border-radius:0}
+.dch .ar{font-size:10px;color:var(--muted);margin-left:auto;transition:transform .2s}
+.dch.op .ar{transform:rotate(180deg)}
+.dcb{padding:9px 11px;background:var(--bg)}
+.dcb.hide{display:none}
+
+/* 가이드 */
+.gs{display:flex;gap:9px;align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--border);font-size:13px;color:var(--sub);line-height:1.65}
+.gs:last-child{border-bottom:none}
+.sn{width:22px;height:22px;flex-shrink:0;background:var(--acc);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900}
+
+/* 설정 컴포넌트 */
+.sr{margin-bottom:10px}
+.sl{font-size:12px;font-weight:700;color:var(--sub);margin-bottom:4px;display:block}
+.si{width:100%;border:1.5px solid var(--bm);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 9px;font-size:13px;font-family:inherit;outline:none}
+.si:focus{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-s)}
+/* 음수·소수 입력 래퍼 */
+.num-wrap{display:flex;gap:4px;align-items:stretch}
+.num-wrap .si{flex:1;min-width:0;border-radius:8px 0 0 8px}
+.num-wrap .pm-btn{
+  width:38px;flex-shrink:0;border:1.5px solid var(--bm);border-left:none;
+  background:var(--surface);color:var(--sub);font-size:16px;font-weight:900;
+  border-radius:0 8px 8px 0;cursor:pointer;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Noto Sans KR',sans-serif;
+}
+.num-wrap .pm-btn:hover{background:var(--acc-s);color:var(--acc);border-color:var(--acc)}
+.num-wrap .pm-btn:active{background:var(--acc);color:#fff}
+.sbr{display:flex;gap:5px}
+.sb{flex:1;padding:6px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;text-align:center}
+.sb:hover,.sb.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+
+/* ══════════ 콘텐츠 ══════════ */
+#content{flex:1;display:flex;overflow:hidden;padding:10px;gap:10px;min-width:0}
+
+/* ══════════ 압력계 영역 ══════════ */
+#ta{
+  flex-shrink:0;background:var(--surface);border-radius:14px;
+  border:2px solid var(--border);display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 4px 20px rgba(79,126,248,.18);transition:width .3s;
+}
+.ph{padding:9px 12px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:7px;font-size:14px;font-weight:700;color:var(--text);flex-shrink:0;overflow:hidden}
+.ph-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ldot{width:9px;height:9px;border-radius:50%;background:#ccc;transition:background .3s}
+.ldot.on{background:var(--grn);box-shadow:0 0 7px rgba(45,190,120,.6);animation:pd 1.5s infinite}
+@keyframes pd{0%,100%{opacity:1}50%{opacity:.35}}
+
+#tg{flex:1;display:flex;flex-wrap:wrap;overflow-y:auto;padding:8px;gap:8px;align-content:flex-start}
+
+/* 압력계(주사기) 카드 */
+.tc{flex:1;min-width:160px;max-width:230px;height:360px;display:flex;flex-direction:column;align-items:center;background:var(--bg);border-radius:12px;border:1.5px solid var(--border);padding:9px 9px 11px}
+.tcn{font-size:12px;font-weight:900;padding:3px 12px;border-radius:20px;margin-bottom:7px;border:1.5px solid}
+.c0{color:#fff;background:#4f7ef8;border-color:#3060d8}
+.c1{color:#fff;background:#ff6b4a;border-color:#cc4422}
+.c2{color:#fff;background:#2dbe78;border-color:#1a9058}
+.c3{color:#fff;background:#8b5cf6;border-color:#6d3ed4}
+.tcv-wrap{width:100%;text-align:center;background:var(--surface);border-radius:9px;border:1.5px solid var(--border);padding:6px 2px;margin-bottom:7px}
+.tcv{font-size:32px;font-weight:900;line-height:1;transition:color .3s}
+.tcu{font-size:12px;font-weight:700;color:var(--sub)}
+.tcsvg{flex:1;display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+.tc-aux{display:none;width:100%;margin-top:6px}
+.aux-item{display:flex;align-items:center;justify-content:space-between;padding:3px 8px;border-radius:7px;background:var(--surface);border:1px solid var(--border);margin-bottom:3px}
+.aux-lbl{font-size:10px;font-weight:700;color:var(--sub)}
+.aux-val{font-size:15px;font-weight:900;color:#3b9ed6;line-height:1}
+
+
+/* 수신 시작/중지 버튼 */
+.stream-btn{margin-left:auto;padding:4px 10px;border-radius:8px;border:1.5px solid var(--grn);background:var(--grn);color:#fff;font-size:11px;font-weight:800;cursor:pointer;transition:all .2s;display:none;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0}
+.stream-btn:hover{filter:brightness(1.1);transform:scale(1.03)}
+.stream-btn:disabled{opacity:.4;cursor:default;filter:none;transform:none}
+.stream-btn.stop{border-color:#e54d42;background:#e54d42}
+.stream-btn.stop:hover{filter:brightness(1.1)}
+/* 전체화면 버튼 */
+#fs-btn{
+  margin-left:auto;width:28px;height:28px;border-radius:7px;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--sub);font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;
+}
+#fs-btn:hover{background:var(--acc-s);border-color:var(--acc);color:var(--acc)}
+
+/* 기록 버튼 */
+#rbw{padding:9px 10px;flex-shrink:0;border-top:2px solid var(--border)}
+.rbtn{width:100%;height:44px;border-radius:11px;background:var(--grn);color:#fff;border:none;font-size:15px;font-weight:900;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 3px 12px rgba(45,190,120,.3)}
+.rbtn:hover{background:#25a868;transform:translateY(-1px)}
+.rbtn:active{transform:scale(.97)}
+
+/* ══════════ 데이터 패널 ══════════ */
+#dp{flex:1;min-width:0;background:var(--surface);border-radius:14px;border:2px solid var(--border);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 4px 20px rgba(79,126,248,.18)}
+.tbar{display:flex;border-bottom:2px solid var(--border);background:var(--bg);padding:7px 10px;gap:5px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+.tbtn{padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--sub);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+.tbtn.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.tbtn:not(.on):hover{background:var(--acc-s);color:var(--acc);border-color:var(--acc)}
+.tspc{flex:1}
+.ab{padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:4px}
+.ab:hover{border-color:var(--acc);color:var(--acc)}
+.ab.dng:hover{border-color:var(--warm);color:var(--warm)}
+.ab.grn-btn{background:var(--grn-s);color:var(--grn);border-color:#7de0ab}
+.ab.grn-btn:hover{background:var(--grn);color:#fff}
+.ab.pur-btn{background:#f5f0ff;color:var(--pur);border-color:#c4b0f8}
+.ab.pur-btn:hover{background:var(--pur);color:#fff}
+.ab.blu-btn{background:var(--acc-s);color:var(--acc);border-color:var(--bm)}
+.ab.blu-btn:hover{background:var(--acc);color:#fff}
+
+.tcont{flex:1;overflow:hidden;display:none}
+.tcont.on{display:flex;flex-direction:column}
+/* 다중보기 모드 */
+.mv-bottom{display:contents}
+.mv-sub-bar{display:none}
+#dp.multi-view{display:flex;flex-direction:column}
+#dp.multi-view .tbar .tbtn:not(#mv-btn){display:none}
+#dp.multi-view #mv-btn{border-color:var(--acc);background:var(--acc-s);color:var(--acc)}
+#dp.multi-view #l-tab{display:flex!important;flex-direction:column;flex:1;min-height:120px;border-bottom:2px solid var(--border)}
+#dp.multi-view .mv-bottom{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+#dp.multi-view .mv-sub-bar{display:flex;padding:5px 10px;gap:5px;background:var(--bg);border-bottom:1.5px solid var(--border);flex-shrink:0}
+#dp.multi-view #t-tab,#dp.multi-view #g-tab{flex:1;min-height:0}
+#dp.multi-view #t-tab.on,#dp.multi-view #g-tab.on{display:flex!important;flex-direction:column}
+
+/* 테이블 */
+.tw{flex:1;overflow-y:auto;padding:4px 10px}
+table{width:100%;border-collapse:collapse}
+thead th{position:sticky;top:0;background:var(--bg);font-size:12px;font-weight:700;color:var(--sub);padding:8px 7px;text-align:center;border-bottom:2px solid var(--border);z-index:5}
+tbody tr{transition:background .1s}
+tbody tr:hover{background:var(--acc-s)}
+tbody tr.nr{animation:ri .3s ease}
+@keyframes ri{from{background:#c8ffdd;opacity:.5;transform:translateY(-4px)}to{background:transparent;opacity:1;transform:none}}
+tbody td{padding:6px 7px;font-size:13px;text-align:center;border-bottom:1px solid var(--border);color:var(--text)}
+td.tv{font-size:15px;font-weight:900}
+.dbt{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;transition:color .15s;padding:2px 5px;border-radius:5px}
+.dbt:hover{color:var(--warm);background:var(--warm-s)}
+.mi{border:none;background:transparent;color:var(--text);font-size:12px;font-family:inherit;width:100%;outline:none;text-align:center;cursor:text}
+.mi:focus{background:var(--acc-s);border-radius:4px}
+.em{padding:40px 0;text-align:center;color:var(--muted);font-size:14px;line-height:1.8}
+
+/* 그래프 탭 */
+#gtab{padding:8px 10px;gap:8px}
+.gcbar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.gt-sel-row{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.gtbtn{padding:5px 11px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.gtbtn.on{background:var(--pur);color:#fff;border-color:var(--pur)}
+.gtbtn:not(.on):hover{border-color:var(--pur);color:var(--pur)}
+.g-save-row{display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding:5px 0 7px;border-bottom:2px solid var(--border);margin-bottom:7px}
+.g-save-row span{font-size:12px;font-weight:700;color:var(--sub);white-space:nowrap}
+.cw{flex:1;min-height:0;position:relative}
+.ndo{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;color:var(--muted);gap:9px;pointer-events:none}
+.ndo .ni{font-size:38px}
+#stat-txt{font-size:12px;color:var(--sub)}
+
+/* ══════════ 전체화면 오버레이 ══════════ */
+#fs-overlay{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(10,20,60,.88);backdrop-filter:blur(6px);
+  flex-direction:column;align-items:center;justify-content:center;
+}
+#fs-overlay.show{display:flex}
+#fs-inner{
+  background:var(--surface);border-radius:20px;border:2px solid var(--border);
+  padding:18px;
+  width:80vw;max-width:80vw;height:80vh;max-height:80vh;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,50,.4);
+}
+#fs-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0}
+#fs-title{font-size:18px;font-weight:900;flex:1}
+#fs-close{
+  width:36px;height:36px;border-radius:9px;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--sub);font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;
+}
+#fs-close:hover{background:var(--warm-s);border-color:var(--warm);color:var(--warm)}
+#fs-grid{
+  flex:1;display:flex;flex-wrap:wrap;gap:16px;
+  justify-content:center;align-items:flex-start;
+  overflow-y:auto;overflow-x:auto;padding:4px;
+}
+#fs-rec{margin-top:14px;width:100%;flex-shrink:0}
+
+/* ── 데이터 패널 전체화면 오버레이 ── */
+#dp-fs-overlay{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(10,20,60,.88);backdrop-filter:blur(6px);
+  flex-direction:column;align-items:center;justify-content:center;
+}
+#dp-fs-overlay.show{display:flex}
+#dp-fs-inner{
+  background:var(--surface);border-radius:20px;border:2px solid var(--border);
+  padding:0;
+  width:80vw;max-width:80vw;height:80vh;max-height:80vh;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,50,.4);
+}
+#dp-fs-head{
+  display:flex;align-items:center;gap:10px;padding:14px 18px 0;flex-shrink:0;
+}
+#dp-fs-title{font-size:17px;font-weight:900;flex:1}
+#dp-fs-close{
+  width:34px;height:34px;border-radius:9px;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--sub);font-size:17px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+#dp-fs-close:hover{background:var(--warm-s);border-color:var(--warm);color:var(--warm)}
+#dp-fs-tbar{
+  display:flex;padding:8px 14px;gap:6px;align-items:center;
+  border-bottom:2px solid var(--border);flex-shrink:0;flex-wrap:wrap;
+}
+#dp-fs-body{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+
+/* ══════════ 모달 ══════════ */
+.mov{position:fixed;inset:0;z-index:100;background:rgba(10,20,60,.7);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center}
+.mbox{background:var(--surface);border-radius:20px;padding:28px 24px;max-width:420px;width:92%;text-align:center;border:2px solid var(--border);box-shadow:0 24px 70px rgba(0,0,50,.25);animation:mian .28s cubic-bezier(.34,1.56,.64,1)}
+/* ★ 수정: 'min'은 CSS 예약어라 keyframes 이름으로 사용 불가 → mian으로 변경 */
+@keyframes mian{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.mt{font-size:20px;font-weight:900;margin-bottom:6px}
+.ms{font-size:13px;color:var(--sub);margin-bottom:20px;line-height:1.6}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mc{padding:22px 14px;border-radius:14px;border:2px solid var(--border);cursor:pointer;transition:all .2s;background:var(--bg)}
+.mc:hover{border-color:var(--acc);background:var(--acc-s);transform:translateY(-3px);box-shadow:0 8px 24px rgba(79,126,248,.2)}
+.mc .mci{font-size:40px;margin-bottom:10px}
+.mc .mcn{font-size:15px;font-weight:900;margin-bottom:4px}
+.mc .mcd{font-size:11px;color:var(--sub);line-height:1.55}
+.mbody-skip{margin-top:16px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;text-decoration:underline;padding:4px}
+
+/* ══════════ 토스트 ══════════ */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 20px;border-radius:24px;font-size:14px;font-weight:700;z-index:300;pointer-events:none;opacity:0;transition:opacity .25s;box-shadow:0 8px 28px rgba(0,0,50,.3);white-space:normal;max-width:90vw;text-align:center;line-height:1.5}
+#toast.on{opacity:1}
+
+/* ══════════ 하단 네비바 (모바일 전용) ══════════ */
+#mob-nav{display:none}
+@media(max-width:767px){
+  #mob-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;z-index:90;
+    height:60px;background:var(--surface);
+    border-top:1.5px solid var(--bm);
+    box-shadow:0 -4px 20px rgba(10,20,60,.12);
+    padding-bottom:max(env(safe-area-inset-bottom),0px);
+    animation:slideup .35s cubic-bezier(.16,1,.3,1) both;
+  }
+  @keyframes slideup{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+  .mnb{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    background:none;border:none;cursor:pointer;padding:5px 2px;
+    color:var(--sub);transition:color .18s,background .18s;
+    position:relative;-webkit-tap-highlight-color:transparent;font-family:'Noto Sans KR',sans-serif;
+  }
+  .mnb:active{background:var(--acc-s)}
+  .mnb.act{color:var(--acc)}
+  .mnb.act::before{
+    content:'';position:absolute;top:0;left:20%;right:20%;
+    height:2.5px;background:var(--acc);border-radius:0 0 3px 3px;
+  }
+  .mnb.conn-act{color:var(--grn)!important}
+  .mnb.conn-act::before{background:var(--grn)!important}
+  .mni{display:flex;align-items:center;justify-content:center;width:26px;height:26px;font-size:18px}
+  .mnl{font-size:10px;font-weight:700;line-height:1;white-space:nowrap}
+}
+
+/* ══════════ 모바일 (≤767px) ══════════ */
+@media(max-width:767px){
+  :root{--hdr:48px;--f-base:14px}
+
+  /* 헤더 압축 */
+  #header{padding:0 8px;gap:6px}
+  .h-title,.h-badge{display:none}
+  .cnt-label{display:none}
+  .hbtn{padding:5px 9px;font-size:11px}
+  #header .hbtn:last-child{display:none} /* 방식 변경 버튼 숨김 (하단바로 이동) */
+
+  /* 사이드 토글 버튼 숨김 — 하단바가 대신 함 */
+  .dtog{display:none!important}
+
+  /* 드로어: 슬라이드인 오버레이 — 부모(#la,#ra)와 독립 */
+  #ld,#rd{
+    position:fixed;top:0;bottom:60px;z-index:85;
+    height:auto;overflow-y:auto;overflow-x:hidden;
+    width:min(88vw,310px)!important;
+    transition:transform .3s cubic-bezier(.4,0,.2,1);
+    box-shadow:4px 0 24px rgba(10,20,60,.2);
+    /* 부모 width:0 영향 차단 */
+    min-width:min(88vw,310px)!important;
+  }
+  #ld{left:0;border-right:2px solid var(--bm)}
+  #rd{right:0;border-left:2px solid var(--bm)}
+  /* 열린 상태 */
+  #ld:not(.col){transform:translateX(0)}
+  #rd:not(.col){transform:translateX(0)}
+  /* 닫힌 상태 */
+  #ld.col{transform:translateX(-110%)}
+  #rd.col{transform:translateX(110%)}
+  #ld .d-inner{width:min(88vw,310px);min-width:0}
+  #rd .d-inner{width:min(88vw,310px);min-width:0}
+
+  /* 모바일 딤 오버레이 */
+  #mob-overlay{
+    display:block;position:fixed;inset:0;bottom:60px;
+    background:rgba(10,20,60,.45);z-index:80;backdrop-filter:blur(2px);
+  }
+  #mob-overlay.hide{display:none}
+
+  /* 메인 레이아웃 */
+  #main{flex-direction:column;overflow:hidden}
+  /* ★ display:none 대신 width:0 사용 — display:none이면 position:fixed 자식도 사라짐 */
+  #la,#ra{width:0!important;min-width:0!important;overflow:visible;flex-shrink:0}
+  #content{
+    flex-direction:column;padding:6px;gap:6px;
+    overflow-y:auto;padding-bottom:68px;
+    /* iOS 스크롤 관성 */
+    -webkit-overflow-scrolling:touch;
+  }
+
+  /* 압력계 영역 */
+  #ta{flex-shrink:0;width:100%!important}
+  #tg{flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:flex-start;min-height:auto}
+  .tc{flex:0 0 calc(50% - 6px);min-width:130px;max-width:none}
+
+  /* 데이터 패널 */
+  #dp{flex:1;min-height:340px}
+  .tbar{padding:5px 7px;gap:3px;flex-wrap:wrap}
+  .tbtn{padding:5px 9px;font-size:12px}
+  .ab{padding:4px 7px;font-size:11px}
+  .g-save-row{flex-wrap:wrap}
+
+  /* 토스트는 하단바 위에 */
+  #toast{bottom:72px}
+}
+
+/* ══════════ 태블릿 (768~1100px) ══════════ */
+@media(min-width:768px) and (max-width:1100px){
+  #mob-nav{display:none!important}
+  #mob-overlay{display:none!important}
+  #ta{width:auto!important}
+  .tc{min-width:120px}
+}
+
+/* ══════════ 데스크탑 ══════════ */
+@media(min-width:768px){
+  #mob-nav{display:none!important}
+  #mob-overlay{display:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- 모바일 드로어 오버레이 -->
+<div id="mob-overlay" class="hide" onclick="closeMobOverlay()"></div>
+
+<!-- 1단계: 유선/무선 선택 모달 -->
+<div id="step1-modal" class="mov" style="display:none">
+  <div class="mbox" style="max-width:480px">
+    <div class="mt">🔌 장치 연결 방식 선택</div>
+    <div class="ms">센서와 연결할 방식을 선택해 주세요.</div>
+    <div class="mgrid">
+      <div class="mc" onclick="step1Select('serial')">
+        <div class="mci">🔌</div>
+        <div class="mcn">유선 연결</div>
+        <div class="mcd">USB 케이블 (Web Serial)<br>아두이노 · 마이크로비트 · 이지메이커</div>
+      </div>
+      <div class="mc" onclick="step1Select('ble')">
+        <div class="mci">📶</div>
+        <div class="mcn">무선 연결</div>
+        <div class="mcd">블루투스 (EZON BLE)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2단계: 장치 연결 유도 모달 -->
+<div id="step2-modal" class="mov" style="display:none">
+  <div class="mbox" style="max-width:380px">
+    <div style="font-size:52px;margin-bottom:12px" id="s2-icon">📶</div>
+    <div class="mt" id="s2-title">무선 장치 연결</div>
+    <div class="ms" id="s2-desc">블루투스 센서(EZON BLE)를 연결하려면 아래 버튼을 누르세요.</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button onclick="step2Connect()"
+        style="width:100%;height:48px;border-radius:13px;background:var(--text);color:#fff;border:none;font-size:15px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px"
+        onmouseover="this.style.background='var(--acc-dk)'"
+        onmouseout="this.style.background='var(--text)'">
+        🔗 장치 연결하기
+      </button>
+      <button onclick="step2Skip()"
+        style="width:100%;height:40px;border-radius:11px;background:none;border:1.5px solid var(--border);color:var(--sub);font-size:13px;font-weight:700;cursor:pointer"
+        onmouseover="this.style.background='var(--bg)'"
+        onmouseout="this.style.background='none'">
+        나중에 연결
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 연결 방식 모달 (헤더 🔄 버튼용 레거시) -->
+<div id="cm" style="display:none"></div>
+
+<!-- 압력계 전체화면 오버레이 -->
+<div id="fs-overlay">
+  <div id="fs-inner">
+    <div id="fs-head">
+      <span id="fs-title">💉 압력계 — 전체 화면</span>
+      <button id="fs-close" onclick="closeFS()">✕</button>
+    </div>
+    <div id="fs-grid"></div>
+    <div id="fs-rec">
+      <button class="rbtn" onclick="recordData();closeFS()" style="font-size:17px;height:50px">
+        ✏️ 기록하기
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 데이터 패널 전체화면 오버레이 -->
+<div id="dp-fs-overlay">
+  <div id="dp-fs-inner">
+    <div id="dp-fs-head">
+      <span id="dp-fs-title">📋 관찰 기록표 — 전체 화면</span>
+      <button id="dp-fs-close" onclick="closeDPFS()">✕</button>
+    </div>
+    <div id="dp-fs-tbar">
+      <button class="tbtn" id="dp-ltab" onclick="dpFSTab('l')">📡 실시간</button>
+      <button class="tbtn on" id="dp-ttab" onclick="dpFSTab('t')">📋 관찰 기록표</button>
+      <button class="tbtn" id="dp-gtab" onclick="dpFSTab('g')">📊 관찰 그래프</button>
+      <div class="tspc"></div>
+      <!-- 전체화면: 실시간 탭 버튼 -->
+      <div id="dp-fs-live-btns" style="display:none;gap:5px;align-items:center">
+        <button class="ab grn-btn" onclick="dlLiveCSV()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+          엑셀 저장
+        </button>
+        <button class="ab pur-btn" onclick="copyLiveData()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          데이터 복사
+        </button>
+        <button class="ab grn-btn" onclick="dlLiveChart()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          이미지 저장
+        </button>
+        <button class="ab blu-btn" onclick="copyLiveChart(this)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          이미지 복사
+        </button>
+        <button class="ab dng" onclick="clearLiveBuf()">🗑 새로고침</button>
+      </div>
+      <!-- 전체화면: 관찰기록표 탭 버튼 -->
+      <div id="dp-fs-table-btns" style="display:none;gap:5px;align-items:center">
+        <button class="ab grn-btn" onclick="dlCSV()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+          엑셀 저장
+        </button>
+        <button class="ab pur-btn" onclick="copyData()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          데이터 복사
+        </button>
+        <button class="ab dng" onclick="clearAll()">🗑 새로고침</button>
+      </div>
+      <!-- 전체화면: 관찰그래프 탭 버튼 -->
+      <div id="dp-fs-graph-btns" style="display:none;gap:5px;align-items:center">
+        <button class="ab grn-btn" id="dp-fs-chart-save" onclick="dlChart()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          이미지 저장
+        </button>
+        <button class="ab blu-btn" id="dp-fs-chart-copy" onclick="copyChart(this)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          이미지 복사
+        </button>
+        <button class="ab dng" onclick="clearAll()">🗑 새로고침</button>
+      </div>
+    </div>
+    <!-- 실시간 탭 -->
+    <div id="dp-fs-l" style="flex:1;padding:10px 14px;display:none;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--sub)">실시간 압력:</span>
+        <div id="dp-fs-live-vals" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        <div style="flex:1"></div>
+        <label style="font-size:12px;font-weight:700;color:var(--sub);display:flex;align-items:center;gap:4px;white-space:nowrap">
+          X축:
+          <input type="range" id="dp-fs-live-zoom" min="10" max="500" step="10" value="100"
+            style="width:100px;cursor:pointer" oninput="setLiveWin(this.value);document.getElementById('dp-fs-live-zoom-val').textContent=this.value;syncLiveZoom(this.value)">
+          <span id="dp-fs-live-zoom-val" style="min-width:28px;text-align:right">100</span>
+        </label>
+        <button class="ab dng" onclick="clearLiveBuf()" style="font-size:11px;padding:3px 8px">🗑 지우기</button>
+      </div>
+      <div style="flex:1;position:relative;min-height:0">
+        <canvas id="dp-fs-live-chart"></canvas>
+        <div id="dp-fs-live-ndo" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;color:var(--muted);gap:9px;pointer-events:none">
+          <span style="font-size:38px">📡</span>
+          <span>장치를 연결하면 실시간 압력이 표시돼요!</span>
+        </div>
+      </div>
+    </div>
+    <!-- 표 탭 -->
+    <div id="dp-fs-t" style="flex:1;overflow-y:auto;padding:6px 12px;display:flex;flex-direction:column">
+      <table><thead id="dp-th"></thead><tbody id="dp-tb"></tbody></table>
+    </div>
+    <!-- 그래프 탭 -->
+    <div id="dp-fs-g" style="flex:1;padding:10px 14px;display:none;flex-direction:column;gap:8px">
+      <div class="gt-sel-row">
+        <span style="font-size:13px;font-weight:700;color:var(--sub)">종류:</span>
+        <button class="gtbtn on" id="dp-gl" onclick="setGTFS('line')">꺾은선</button>
+        <button class="gtbtn" id="dp-gb" onclick="setGTFS('bar')">막대</button>
+        <div style="width:1px;height:18px;background:var(--border);flex-shrink:0;margin:0 4px"></div>
+        <button class="gtbtn avg-btn" onclick="toggleAvgLine()" title="측정 데이터의 평균 선 표시">📏 자동평균</button>
+        <div style="width:1px;height:18px;background:var(--border);flex-shrink:0;margin:0 4px"></div>
+        <label style="font-size:12px;font-weight:700;color:var(--sub);display:flex;align-items:center;gap:4px;white-space:nowrap">
+          X축:
+          <input type="range" id="dp-fs-obs-zoom" min="10" max="500" step="10" value="500"
+            style="width:100px;cursor:pointer" oninput="setObsZoom(this.value);document.getElementById('dp-fs-obs-zoom-val').textContent=this.value;syncObsZoom(this.value);renderDPFSChart()">
+          <span id="dp-fs-obs-zoom-val" style="min-width:28px;text-align:right">500</span>
+        </label>
+        <div style="flex:1"></div>
+        <span id="dp-stat" style="font-size:12px;color:var(--sub)"></span>
+      </div>
+      <div style="flex:1;position:relative">
+        <canvas id="dp-chart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <!-- 헤더 -->
+  <div id="header">
+    <span class="h-logo" id="h-logo-emoji">💉</span>
+    <span class="h-title">압력 측정</span>
+
+    <div id="cnt-area">
+      <span class="cnt-label">💉 압력계 수:</span>
+      <div class="cnt-btns">
+        <button class="cnt-btn on" id="cnt1" onclick="setN(1)">1</button>
+        <button class="cnt-btn" id="cnt2" onclick="setN(2)">2</button>
+        <button class="cnt-btn" id="cnt3" onclick="setN(3)">3</button>
+        <button class="cnt-btn" id="cnt4" onclick="setN(4)">4</button>
+      </div>
+    </div>
+
+    <div class="h-right">
+      <span id="cs">연결 안 됨</span>
+      <button class="hbtn pri" id="bc" onclick="openConnModal()">🔗 장치 연결</button>
+      <!-- 유선/무선 토글 스위치 -->
+      <div id="conn-type-toggle" title="연결 방식 선택" onclick="toggleConnType()"
+        style="display:flex;align-items:center;gap:0;border-radius:10px;border:1.5px solid var(--border);overflow:hidden;cursor:pointer;flex-shrink:0;user-select:none">
+        <div id="ct-serial"
+          style="padding:5px 11px;font-size:11px;font-weight:900;transition:all .2s;background:var(--text);color:#fff">
+          🔌 유선
+        </div>
+        <div id="ct-ble"
+          style="padding:5px 11px;font-size:11px;font-weight:900;transition:all .2s;background:var(--surface);color:var(--sub)">
+          📶 무선
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 메인 -->
+  <div id="main">
+
+    <!-- 왼쪽 사이드 -->
+    <div class="side-area" id="la">
+      <div class="drawer" id="ld">
+        <div class="d-inner">
+
+          <div class="dc">
+            <div class="dch" onclick="toggleDC(this)">📖 사용 방법<span class="ar">▼</span></div>
+            <div class="dcb hide">
+              <div class="gs"><div class="sn">1</div><div>🔌 <b>장치 연결</b> 버튼으로 압력 센서를 연결해요 (USB 또는 블루투스)</div></div>
+              <div class="gs"><div class="sn">2</div><div>📝 <b>기록하기</b> 버튼을 누르면 모든 압력이 한 번에 저장돼요</div></div>
+              <div class="gs"><div class="sn">3</div><div>📊 <b>그래프 탭</b>에서 압력 변화를 그래프로 확인해요</div></div>
+              <div class="gs"><div class="sn">4</div><div>💾 그래프 위 저장 버튼으로 이미지나 엑셀로 내려받아요</div></div>
+            </div>
+          </div>
+
+          <div class="dc">
+            <div class="dch" onclick="toggleDC(this)">📱 기기별 연결 방법<span class="ar">▼</span></div>
+            <div class="dcb hide">
+              <div style="font-size:13px;color:var(--sub);line-height:1.75">
+                <div style="padding:5px 0;border-bottom:1px dashed var(--border)"><b style="color:var(--acc)">📱 iPhone·iPad</b><br>블루투스 연결 시 <b>Bluefy 앱</b> 설치 후 이용</div>
+                <div style="padding:5px 0;border-bottom:1px dashed var(--border)"><b style="color:var(--grn)">🤖 갤럭시·안드로이드</b><br><b>크롬 브라우저</b>로 접속하세요</div>
+                <div style="padding:5px 0"><b>💻 노트북·데스크탑</b><br>크롬 브라우저 + USB 또는 블루투스</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dc">
+            <div class="dch" onclick="toggleDC(this)">💉 여러 압력계 사용법<span class="ar">▼</span></div>
+            <div class="dcb hide" style="font-size:13px;color:var(--sub);line-height:1.75">
+              상단의 <b>1·2·3·4</b> 버튼으로 압력계 개수를 선택해요.<br><br>
+              • 각 압력계는 독립적으로 표시해요<br>
+              • <b>기록하기</b>를 누르면 모든 압력계 값이 한 줄에 저장돼요<br>
+              • 그래프에서 채널별로 다른 색으로 확인할 수 있어요<br>
+              • <b>⛶ 전체화면</b> 버튼으로 크게 볼 수 있어요
+            </div>
+          </div>
+
+
+
+        </div>
+      </div>
+      <button class="dtog" id="lt" onclick="togDrawer('left')">
+        <span class="tlabel"><span class="tarr" id="la-arr">◀</span>사용설명</span>
+      </button>
+    </div>
+
+    <!-- 콘텐츠 -->
+    <div id="content">
+
+      <!-- 압력계 영역 -->
+      <div id="ta">
+        <div class="ph">
+          <span id="thermo-header-label" class="ph-label">💉 압력계</span>
+          <div class="ldot" id="ldot"></div>
+          <button id="stream-btn" class="stream-btn" onclick="toggleStreaming()" disabled title="센서 연결 후 수신을 시작하세요">▶ 수신 시작</button>
+          <button id="fs-btn" onclick="openFS()" title="전체 화면으로 보기">⛶</button>
+        </div>
+        <div id="tg"></div>
+        <div id="rbw">
+          <button class="rbtn" onclick="recordData()">✏️ 기록하기</button>
+        </div>
+      </div>
+
+      <!-- 데이터 패널 -->
+      <div id="dp">
+        <div class="tbar">
+          <button class="tbtn on" id="ltab-btn" onclick="switchTab('l')" style="position:relative">
+            📡 실시간
+            <span id="live-badge" style="display:none;position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:50%;background:var(--grn);box-shadow:0 0 5px rgba(45,190,120,.7);animation:pdot 1.5s infinite"></span>
+          </button>
+          <button class="tbtn" id="ttab" onclick="switchTab('t')">📋 관찰 기록표</button>
+          <button class="tbtn" id="gtab-btn" onclick="switchTab('g')">📊 관찰 그래프</button>
+          <button class="tbtn" id="mv-btn" onclick="toggleMultiView()" title="실시간+기록 동시 보기">⊞ 다중보기</button>
+          <div class="tspc"></div>
+          <!-- 실시간 탭 전용 버튼 -->
+          <div id="tbar-live-btns" style="display:flex;gap:5px;align-items:center">
+            <button class="ab grn-btn" onclick="dlLiveCSV()" title="실시간 데이터 엑셀 저장">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              엑셀 저장
+            </button>
+            <button class="ab pur-btn" onclick="copyLiveData()" title="실시간 데이터 클립보드 복사">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              데이터 복사
+            </button>
+            <button class="ab grn-btn" onclick="dlLiveChart()" title="실시간 그래프 이미지 저장">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              이미지 저장
+            </button>
+            <button class="ab blu-btn" onclick="copyLiveChart(this)" title="실시간 그래프 이미지 복사">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              이미지 복사
+            </button>
+            <button class="ab dng" onclick="clearLiveBuf()">🗑 새로고침</button>
+          </div>
+          <!-- 관찰기록표 탭 전용 버튼 -->
+          <div id="tbar-table-btns" style="display:none;gap:5px;align-items:center">
+            <button class="ab grn-btn" onclick="dlCSV()" title="관찰기록표 엑셀 저장">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              엑셀 저장
+            </button>
+            <button class="ab pur-btn" onclick="copyData()" title="관찰기록표 데이터 클립보드 복사">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              데이터 복사
+            </button>
+            <button class="ab dng" onclick="clearAll()">🗑 새로고침</button>
+          </div>
+          <!-- 관찰그래프 탭 전용 버튼 -->
+          <div id="tbar-graph-btns" style="display:none;gap:5px;align-items:center">
+            <button class="ab grn-btn" onclick="dlChart()" title="관찰그래프 이미지 저장">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              이미지 저장
+            </button>
+            <button class="ab blu-btn" onclick="copyChart(this)" title="관찰그래프 이미지 복사">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              이미지 복사
+            </button>
+            <button class="ab dng" onclick="clearAll()">🗑 새로고침</button>
+          </div>
+          <!-- 전체화면 버튼 -->
+          <button onclick="openDPFS()" title="전체 화면으로 보기"
+            style="width:30px;height:30px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--sub);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;margin-left:2px"
+            onmouseover="this.style.background='var(--acc-s)';this.style.borderColor='var(--acc)';this.style.color='var(--acc)'"
+            onmouseout="this.style.background='var(--surface)';this.style.borderColor='var(--border)';this.style.color='var(--sub)'">⛶</button>
+        </div>
+
+        <!-- 실시간 탭 -->
+        <div class="tcont on" id="l-tab" style="padding:8px 10px;gap:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700;color:var(--sub)">실시간 압력:</span>
+            <div id="live-cur-vals" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            <div style="flex:1"></div>
+            <label style="font-size:12px;font-weight:700;color:var(--sub);display:flex;align-items:center;gap:4px;white-space:nowrap">
+              X축 표시:
+              <input type="range" id="live-zoom" min="10" max="500" step="10" value="100"
+                style="width:90px;cursor:pointer" oninput="setLiveWin(this.value);document.getElementById('live-zoom-val').textContent=this.value">
+              <span id="live-zoom-val" style="min-width:28px;text-align:right">100</span>
+            </label>
+            <button class="ab dng" onclick="clearLiveBuf()" style="font-size:11px;padding:3px 8px">🗑 지우기</button>
+          </div>
+          <div class="cw" id="live-cw">
+            <canvas id="live-chart"></canvas>
+            <div class="ndo" id="live-ndo" style="display:flex">
+              <span class="ni">📡</span>
+              <span>장치를 연결하면 실시간 압력이 표시돼요!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 하단: 표+그래프 (다중보기 시) -->
+        <div class="mv-bottom" id="mv-bottom">
+          <div class="mv-sub-bar" id="mv-sub-bar">
+            <button class="tbtn on" id="msub-t" onclick="multiSubTab('t')">📋 기록표</button>
+            <button class="tbtn" id="msub-g" onclick="multiSubTab('g')">📊 그래프</button>
+          </div>
+
+        <!-- 표 탭 -->
+        <div class="tcont" id="t-tab">
+          <div class="tw" id="tw">
+            <table><thead id="th"></thead><tbody id="tb">
+              <tr><td colspan="10" class="em">아직 기록이 없어요.<br>📝 압력계를 확인하고 <b>기록하기</b>를 눌러보세요!</td></tr>
+            </tbody></table>
+          </div>
+        </div>
+
+        <!-- 그래프 탭 -->
+        <div class="tcont" id="g-tab" style="padding:8px 10px;gap:0">
+
+          <!-- 그래프 컨트롤 한 줄 -->
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;margin-bottom:7px;padding:0 2px">
+            <span style="font-size:12px;font-weight:700;color:var(--sub);white-space:nowrap">종류:</span>
+            <button class="gtbtn on" id="gl" onclick="setGT('line')">꺾은선</button>
+            <button class="gtbtn" id="gb" onclick="setGT('bar')">막대</button>
+            <div style="width:1px;height:18px;background:var(--border);flex-shrink:0;margin:0 2px"></div>
+            <button class="gtbtn avg-btn" onclick="toggleAvgLine()" title="측정 데이터의 평균 선 표시">📏 자동평균</button>
+            <div style="width:1px;height:18px;background:var(--border);flex-shrink:0;margin:0 2px"></div>
+            <label style="font-size:12px;font-weight:700;color:var(--sub);display:flex;align-items:center;gap:4px;white-space:nowrap">
+              X축:
+              <input type="range" id="obs-zoom" min="10" max="500" step="10" value="500"
+                style="width:80px;cursor:pointer" oninput="setObsZoom(this.value);document.getElementById('obs-zoom-val').textContent=this.value">
+              <span id="obs-zoom-val" style="min-width:28px;text-align:right;font-size:11px">500</span>
+            </label>
+            <div style="width:1px;height:18px;background:var(--border);flex-shrink:0;margin:0 2px"></div>
+            <button class="ab grn-btn" onclick="dlChart()" title="그래프 이미지 저장" style="white-space:nowrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              이미지 저장
+            </button>
+            <button class="ab blu-btn" onclick="copyChart(this)" title="그래프 이미지 복사" style="white-space:nowrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              이미지 복사
+            </button>
+            <div style="flex:1"></div>
+            <span id="stat-txt" style="font-size:11px;color:var(--sub);white-space:nowrap"></span>
+          </div>
+
+          <div class="cw">
+            <canvas id="mc"></canvas>
+            <div class="ndo" id="ndo"><span class="ni">📊</span><span>기록이 쌓이면 그래프가 나타나요!</span></div>
+          </div>
+        </div>
+
+        </div><!-- /mv-bottom -->
+      </div>
+    </div>
+
+    <!-- 오른쪽 사이드 -->
+    <div class="side-area" id="ra">
+      <button class="dtog" id="rt" onclick="togDrawer('right')">
+        <span class="tlabel"><span class="tarr" id="ra-arr">▶</span>설&nbsp;&nbsp;정</span>
+      </button>
+      <div class="drawer" id="rd">
+        <div class="d-inner">
+
+          <div class="dc" id="dc-board">
+            <div class="dch" onclick="toggleDC(this)">
+              📶 무선 보드 설정
+              <span id="board-count-badge" style="font-size:11px;font-weight:700;color:var(--sub)"></span>
+              <button id="btn-refresh-dev" onclick="event.stopPropagation();refreshDevList()"
+                title="장치 목록 새로고침"
+                style="margin-left:4px;font-size:11px;background:none;border:none;cursor:pointer;color:var(--muted);padding:0 2px"
+                disabled>🔄</button>
+              <span class="ar">▼</span>
+            </div>
+            <div class="dcb hide">
+              <!-- ① 추가 / 모두 해제 버튼 -->
+              <div class="sbr" style="margin-bottom:8px">
+                <button id="btn-add-dev" onclick="addBLEDevice()"
+                  style="flex:1;padding:7px;border-radius:9px;border:1.5px solid var(--acc);color:var(--acc);background:var(--acc-s);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s"
+                  disabled>➕ 무선 보드 추가</button>
+                <button id="btn-disc-all" onclick="discAllDevices()"
+                  style="flex:1;padding:7px;border-radius:9px;border:1.5px solid #c0392b;color:#c0392b;background:var(--surface);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s"
+                  disabled>🗑 모두 해제</button>
+              </div>
+              <!-- ② 장치 카드 목록 -->
+              <div id="device-card-list" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;margin-bottom:8px">
+                <p style="font-size:12px;text-align:center;color:var(--muted);padding:12px 0">
+                  연결된 보드가 없습니다.<br>장치 연결 버튼을 눌러 시작하세요.
+                </p>
+              </div>
+              <!-- ③ 스키마 정보 -->
+              <div style="padding-top:6px;border-top:1px solid var(--border)">
+                <div id="schi" style="font-size:11px;color:var(--muted);line-height:1.5">연결 대기 중...</div>
+              </div>
+              <!-- 숨김 호환 요소 -->
+              <div style="display:none">
+                <select id="bss"></select>
+                <input id="biv" type="number" value="1"/>
+              </div>
+            </div>
+          </div>
+
+          <div class="dc" id="dc-sensor-display">
+            <div class="dch" onclick="toggleDC(this)">📡 센서데이터 표시 선택<span class="ar">▼</span></div>
+            <div class="dcb hide">
+              <div id="live-ch-list" style="font-size:12px;color:var(--sub);max-height:45vh;overflow-y:auto;padding:2px">센서를 연결하고 수신을 시작하면 채널 목록이 표시됩니다.</div>
+            </div>
+          </div>
+
+          <div class="dc" id="dc-thermo">
+            <div class="dch" onclick="toggleDC(this)">⚙️ 압력계 설정<span class="ar">▼</span></div>
+            <div class="dcb hide">
+              <div class="sr">
+                <span class="sl">압력계 범위 모드</span>
+                <div class="sbr">
+                  <button class="sb on" id="thermo-manual" onclick="setThermoMode('manual')">🔧 수동</button>
+                  <button class="sb" id="thermo-auto" onclick="setThermoMode('auto')">🤖 자동</button>
+                </div>
+              </div>
+              <div id="thermo-manual-area">
+                <div class="sr"><span class="sl">압력 범위 최솟값</span><div class="num-wrap"><input type="text" inputmode="decimal" class="si" id="rmin" value="10"><button type="button" class="pm-btn" onclick="toggleSign('rmin')" title="부호 전환">±</button></div></div>
+                <div class="sr"><span class="sl">압력 범위 최댓값</span><div class="num-wrap"><input type="text" inputmode="decimal" class="si" id="rmax" value="150"><button type="button" class="pm-btn" onclick="toggleSign('rmax')" title="부호 전환">±</button></div></div>
+              </div>
+              <div class="sr">
+                <span class="sl">측정 단위</span>
+                <div class="sbr">
+                  <button class="sb on" id="ukpa" onclick="pendUnit='kPa';updPendUnitUI()">kPa</button>
+                </div>
+              </div>
+              <button onclick="applyThermoSettings()" style="width:100%;margin-top:8px;padding:9px;border-radius:9px;border:1.5px solid var(--acc);background:var(--acc);color:#fff;font-size:13px;font-weight:900;cursor:pointer;transition:all .15s">✅ 적용</button>
+            </div>
+          </div>
+
+          <div class="dc">
+            <div class="dch" onclick="toggleDC(this)">📊 관찰 그래프 설정<span class="ar">▼</span></div>
+            <div class="dcb hide">
+              <div class="sr">
+                <span class="sl">Y축 범위</span>
+                <div class="sbr">
+                  <button class="sb on" id="ya" onclick="setYM('auto')">자동</button>
+                  <button class="sb" id="ym" onclick="setYM('manual')">수동</button>
+                </div>
+              </div>
+              <div id="ymanual" style="display:none">
+                <div class="sr"><span class="sl">Y축 최솟값</span><div class="num-wrap"><input type="text" inputmode="decimal" class="si" id="ymin" value="10"><button type="button" class="pm-btn" onclick="toggleSign('ymin')" title="부호 전환">±</button></div></div>
+                <div class="sr"><span class="sl">Y축 최댓값</span><div class="num-wrap"><input type="text" inputmode="decimal" class="si" id="ymax" value="150"><button type="button" class="pm-btn" onclick="toggleSign('ymax')" title="부호 전환">±</button></div></div>
+              </div>
+              <div class="sr">
+                <span class="sl">X축 레이블</span>
+                <select class="si" id="xtype">
+                  <option value="index">측정 번호</option>
+                  <option value="time">측정 시각</option>
+                  <option value="memo">메모 내용</option>
+                </select>
+              </div>
+              <button onclick="applyGraphSettings()" style="width:100%;margin-top:8px;padding:9px;border-radius:9px;border:1.5px solid var(--pur);background:var(--pur);color:#fff;font-size:13px;font-weight:900;cursor:pointer;transition:all .15s">✅ 적용</button>
+            </div>
+          </div>
+
+          <div class="dc">
+            <div class="dch" onclick="toggleDC(this)">🔁 자동 기록 설정<span class="ar">▼</span></div>
+            <div class="dcb hide">
+              <div class="sr"><span class="sl">기록 간격 (초)</span><input type="number" class="si" id="aiv" value="5" min="1"></div>
+              <div class="sr"><span class="sl">최대 기록 횟수</span><input type="number" class="si" id="amx" value="50" min="1"></div>
+              <div class="sbr">
+                <button class="sb on" id="arb" onclick="togAuto()">▶ 시작</button>
+                <button class="sb" id="ars" style="pointer-events:none;color:var(--muted)">대기 중</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ══ 모바일 하단 네비바 ══ -->
+<nav id="mob-nav">
+  <!-- 사용설명 -->
+  <button class="mnb" id="mn-guide" onclick="mobNav('guide')">
+    <span class="mni">📖</span>
+    <span class="mnl">사용설명</span>
+  </button>
+  <!-- 압력계 수 -->
+  <button class="mnb" id="mn-cnt" onclick="mobNav('cnt')">
+    <span class="mni">💉</span>
+    <span class="mnl">압력</span>
+  </button>
+  <!-- 기록표 -->
+  <button class="mnb act" id="mn-table" onclick="mobNav('table')">
+    <span class="mni">📋</span>
+    <span class="mnl">기록표</span>
+  </button>
+  <!-- 그래프 -->
+  <button class="mnb" id="mn-graph" onclick="mobNav('graph')">
+    <span class="mni">📊</span>
+    <span class="mnl">그래프</span>
+  </button>
+  <!-- 설정 -->
+  <button class="mnb" id="mn-set" onclick="mobNav('set')">
+    <span class="mni">⚙️</span>
+    <span class="mnl">설정</span>
+  </button>
+</nav>
+
+<script>
+// ════════════ 상수 ════════════
+const PAL=['#4f7ef8','#ff6b4a','#2dbe78','#8b5cf6'];
+const TNAMES=['압력 1','압력 2','압력 3','압력 4'];
+const BLE_S=[
+  {id:1,n:"DIY-A센서(raw)",mi:10},{id:2,n:"DIY-A센서(V)",mi:10},{id:3,n:"DIY-B센서(Bool)",mi:10},{id:4,n:"DIY-B센서(raw)",mi:10},
+  {id:5,n:"pH센서",mi:100},{id:6,n:"가스센서(CO)",mi:100},{id:7,n:"가스센서(H2)",mi:100},{id:8,n:"가스센서(LPG)",mi:100},
+  {id:9,n:"가스센서(연기)",mi:100},{id:10,n:"가스센서(프로판)",mi:100},{id:11,n:"고온센서",mi:200},{id:12,n:"공기압센서",mi:100},
+  {id:13,n:"기압센서(고도m)",mi:100},{id:14,n:"기압센서(기압hPa)",mi:100},{id:15,n:"기압센서(온도C)",mi:100},{id:16,n:"무게센서(g)",mi:200},
+  {id:17,n:"미세먼지센서(10)",mi:5000},{id:18,n:"미세먼지센서(2.5)",mi:5000},{id:19,n:"미세먼지센서(1.0)",mi:5000},{id:20,n:"밝기센서",mi:10},
+  {id:21,n:"소리센서",mi:10},{id:22,n:"수중접촉온도센서",mi:1000},{id:23,n:"온습도센서",mi:100},{id:24,n:"이산화탄소센서",mi:1000},
+  {id:25,n:"자기장센서",mi:10},{id:26,n:"자이로-가속도(3축)",mi:10},{id:27,n:"자이로-각속도(3축)",mi:10},{id:28,n:"자이로-지자기(3축)",mi:10},
+  {id:29,n:"자이로-자세(기울기)",mi:10},{id:30,n:"자이로-전체가속도",mi:10},{id:31,n:"자이로-방위각",mi:10},{id:32,n:"전류센서(전류mAh)",mi:10},
+  {id:33,n:"전류센서(전력mW)",mi:10},{id:34,n:"전류센서(버스전압V)",mi:10},{id:35,n:"전압센서",mi:10},{id:36,n:"초음파거리센서",mi:50},
+  {id:37,n:"스위치(버튼형)",mi:0},{id:38,n:"스위치(터치형)",mi:0},{id:39,n:"인체감지센서(PIR)",mi:0}
+];
+const EZON_SVC = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const BLE_F = [{ namePrefix: 'EZ' }, { services: [EZON_SVC] }];
+
+// EZON BLE SDK 초기화 — navigator.ezonBle 등록
+if (window.ezonBle?.install) {
+  window.ezonBle.install();
+  console.log('[BLE] EZON SDK install() 호출 완료');
+}
+const LBUF=300;
+
+// ════════════ 상태 ════════════
+let N=1, TVals=[35,35,35,35], rMin=10, rMax=150, unit='kPa';
+let thermoMode='manual'; // 'manual' or 'auto'
+let pendUnit='kPa';
+// 보조 채널 데이터: auxData[thermoIdx] = [{label, value}, ...]
+let auxData=[[],[],[],[]];  
+let gType='line', yMode='auto';
+let recs=[], rCnt=0;
+let autoTmr=null, isAuto=false;
+// 초기 기본값 — DOMContentLoaded 전에 버튼 클릭해도 동작하도록
+let cType = 'serial';
+let conn=false, discing=false, streaming=false, isDisconnecting=false;
+let hub=null, sport=null, rd=null, rlActive=false, cyc=0;
+let lbuf=[], sInit=false, sCnt=0, lastSch='', sIdxs=[], sFCols=[], sPrimSids=[], auxIdxs=[], auxMap=[];
+// 실시간 그래프 채널 관리
+let liveChList=[]; // [{key,label,color,vis,type,thermoIdx,slotIdx}]
+const AUX_COLORS=['#3b9ed6','#ff9f43','#ee5a24','#10ac84','#8854d0','#fd79a8','#6c5ce7','#00b894'];
+let chart=null;
+let showAvgLine=false;
+function toggleAvgLine(){
+  showAvgLine=!showAvgLine;
+  document.querySelectorAll('.avg-btn').forEach(b=>b.classList.toggle('on',showAvgLine));
+  updChart();
+  if(document.getElementById('dp-fs-overlay').classList.contains('show')) renderDPFSChart();
+}
+
+// ════════════ V1 통합: localStorage 센서 설정 영속화 ════════════
+const SENSOR_SETTING_STORAGE_KEY = 'ezonBle.sensorSetting.v1';
+const DEVICE_SENSOR_SETTING_KEY  = 'ezonBle.deviceSensorSetting.v1';
+const SENSOR_ALIAS_STORAGE_KEY   = 'ezonBle.sensorAliases.v1';
+const DEVICE_ALIAS_STORAGE_KEY   = 'ezonBle.deviceAliases.v1';
+
+let deviceSensorMap = (() => { try { return JSON.parse(localStorage.getItem(DEVICE_SENSOR_SETTING_KEY) || '{}') || {}; } catch(_) { return {}; } })();
+let sensorAliasMap  = (() => { try { return JSON.parse(localStorage.getItem(SENSOR_ALIAS_STORAGE_KEY) || '{}') || {}; } catch(_) { return {}; } })();
+
+function persistSensorAliasMap() { localStorage.setItem(SENSOR_ALIAS_STORAGE_KEY, JSON.stringify(sensorAliasMap)); }
+function persistDeviceAliasMap()  { localStorage.setItem(DEVICE_ALIAS_STORAGE_KEY,  JSON.stringify(deviceAliasMap)); }
+function loadSensorSetting() { try { return JSON.parse(localStorage.getItem(SENSOR_SETTING_STORAGE_KEY) || 'null'); } catch(_) { return null; } }
+function persistSensorSetting(sensorId, intervalMs) { localStorage.setItem(SENSOR_SETTING_STORAGE_KEY, JSON.stringify({ sensorId, intervalMs })); }
+function persistDeviceSensorMap(next) { localStorage.setItem(DEVICE_SENSOR_SETTING_KEY, JSON.stringify(next)); }
+
+function stableDeviceKey(device) {
+  if (typeof device === 'string') return device;
+  return device?.macTail || device?.bluetoothName || device?.id || '';
+}
+function getDeviceSensorSetting(deviceOrId) {
+  const key = typeof deviceOrId === 'object' ? stableDeviceKey(deviceOrId) : deviceOrId;
+  return deviceSensorMap[key] || null;
+}
+function setDeviceSensorSetting(deviceOrId, sensorId, intervalMs) {
+  const key = typeof deviceOrId === 'object' ? stableDeviceKey(deviceOrId) : deviceOrId;
+  if (!key) return;
+  deviceSensorMap[key] = { sensorId, intervalMs };
+  persistDeviceSensorMap(deviceSensorMap);
+}
+
+// ════════════ 초기화 ════════════
+window.addEventListener('DOMContentLoaded',()=>{
+  // BLE 센서 옵션 채우기
+  const sel=document.getElementById('bss');
+  BLE_S.forEach(s=>{
+    const o=document.createElement('option');
+    o.value=s.id; o.textContent=`${s.id} - ${s.n}`;
+    if(s.id===12)o.selected=true; sel.appendChild(o);
+  });
+  // 모바일에서 드로어 초기 닫힘 상태 보장
+  if(window.innerWidth<=767){
+    document.getElementById('ld').classList.add('col');
+    document.getElementById('rd').classList.add('col');
+    document.getElementById('mob-overlay').classList.add('hide');
+  }
+  // 1400px 미만이면 초기에도 드로어 닫기
+  applyDrawerState();
+  // 처음 시작 시 양쪽 드로어 모두 닫힘
+  document.getElementById('ld').classList.add('col');
+  document.getElementById('rd').classList.add('col');
+  document.getElementById('la-arr').textContent = '▶';
+  document.getElementById('ra-arr').textContent = '▶';
+  cType = 'serial';
+  syncConnToggle('serial');
+  setN(1);
+  initChart();
+  initLiveChart();
+  // 시작 시 1단계 모달 (유선/무선 선택) 표시
+  setTimeout(showWelcomeModal, 300);
+});
+
+// ════════════ 압력계 수 변경 ════════════
+function setN(n){
+  N=n;
+  [1,2,3,4].forEach(i=>document.getElementById('cnt'+i).classList.toggle('on',i===n));
+  const ta=document.getElementById('ta');
+  if(n===1) ta.style.width='220px';
+  else if(n===2) ta.style.width='380px';
+  else if(n===3) ta.style.width='570px';
+  else ta.style.width='380px';
+  renderThermos();
+  renderTH();renderTB();updChart();updStats();
+}
+
+// ════════════ 주사기 압력센서 SVG ════════════
+function tCol(t){
+  const r=(t-rMin)/(rMax-rMin);
+  if(r<.25)return'#3b9af8';if(r<.5)return'#4f7ef8';if(r<.75)return'#f59e0b';return'#ff4444';
+}
+
+function mkSVG(i){
+  const t=TVals[i];
+  let ratio = (t - rMin) / (rMax - rMin);
+  ratio = Math.max(0, Math.min(1, ratio));
+  const minPos = 15; const maxPos = 140; 
+  const plungerPos = maxPos - (ratio * (maxPos - minPos));
+  const opacity = 0.15 + ratio * 0.55;
+
+  return `
+    <svg id="sv${i}" data-i="${i}" viewBox="0 0 220 350" width="100%" height="100%" style="cursor:ns-resize;touch-action:none;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+          <linearGradient id="airGrad${i}" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stop-color="var(--air-blue)" stop-opacity="0.1" />
+              <stop offset="100%" stop-color="var(--air-blue)" stop-opacity="0.5" />
+          </linearGradient>
+      </defs>
+      <g transform="translate(50, 0)">
+          <g id="plunger-group${i}" transform="translate(0, ${plungerPos})">
+              <path d="M 36 10 L 52 1 L 68 1 L 84 10 L 84 21 L 36 21 Z" fill="var(--plunger-color)"/>
+              <rect x="54" y="20" width="12" height="155" fill="var(--barrel-stroke)"/>
+              <rect x="35" y="175" width="50" height="5" rx="2" fill="var(--barrel-stroke)"/>
+          </g>
+          <g id="barrel-assembly${i}">
+              <path d="M 25 160 L 95 160 Q 100 160 100 165 L 20 165 Q 20 160 25 160 Z" fill="none" stroke="var(--barrel-stroke)" stroke-width="1.5" />
+              <path d="M 49 0 L 71 0 L 71 13 L 88 23 L 88 160 M 32 160 L 32 23 L 49 13 L 49 0" stroke="var(--barrel-stroke)" stroke-width="1.5" fill="none" />
+              <path d="M 52 0 L 68 0 L 68 15 L 85 25 L 85 159 M 35 159 L 35 25 L 52 15 L 52 0" fill="none" stroke="var(--barrel-stroke)" stroke-width="1.5" stroke-linecap="round" />
+          </g>
+          <g stroke="#e2e8f0" stroke-width="1">
+              <line x1="72" y1="50" x2="80" y2="50"/>
+              <line x1="72" y1="85" x2="80" y2="85"/>
+              <line x1="72" y1="120" x2="80" y2="120"/>
+              <line x1="72" y1="155" x2="80" y2="155"/>
+          </g>
+          <path id="air-chamber${i}" 
+                d="M 36.5 ${plungerPos + 10} L 36.5 25 L 52 16 L 52 0 L 68 0 L 68 16 L 83.5 25 L 83.5 ${plungerPos + 10} Z" 
+                fill="url(#airGrad${i})" fill-opacity="${opacity}" stroke="none" />
+      </g>
+  </svg>`;
+}
+
+function renderThermos(target){
+  const g=target||document.getElementById('tg');
+  detachDrags(g);
+  g.innerHTML='';
+  g.style.display='flex';
+  g.style.flexWrap='wrap';
+  g.style.justifyContent='center';
+  g.style.alignItems='flex-start';
+  for(let i=0;i<N;i++){
+    const d=document.createElement('div');
+    d.className='tc';
+    const chInfo=liveChList.find(c=>c.type==='temp'&&c.thermoIdx===i);
+    const sEmoji=chInfo?getSensorEmoji(chInfo.sensorId):'💉';
+    const devLabel=chInfo?`<span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:#fff3;color:#fff;text-align:center;line-height:16px;font-size:9px;margin-right:3px">${chInfo.devIdx}</span>${sEmoji} ${chInfo.deviceName}`:'';
+    const tcnContent=devLabel||TNAMES[i];
+    d.innerHTML=`
+      <div class="tcn c${i}">${tcnContent}</div>
+      <div class="tcv-wrap">
+        <div class="tcv" id="tv${i}">${dispT(i).toFixed(1)}</div>
+        <div class="tcu" id="tu${i}">${uLbl()}</div>
+      </div>
+      <div class="tcsvg">${mkSVG(i)}</div>
+      <div class="tc-aux" id="ax${i}"></div>`;
+    g.appendChild(d);
+  }
+  attachDrags(g);
+  for(let i=0;i<N;i++) updAuxUI(i);
+}
+
+function detachDrags(g){
+  for(let i=0;i<4;i++){
+    const sv=g.querySelector(`#sv${i}`);
+    if(!sv)continue;
+    if(sv._mm)window.removeEventListener('mousemove',sv._mm);
+    if(sv._tm)window.removeEventListener('touchmove',sv._tm);
+    if(sv._mu)window.removeEventListener('mouseup',sv._mu);
+    if(sv._tu)window.removeEventListener('touchend',sv._tu);
+  }
+}
+function attachDrags(g){
+  for(let i=0;i<N;i++){
+    const sv=g.querySelector(`#sv${i}`);
+    if(!sv)continue;
+    let drag=false,sy=0,st=0;
+    const ey=e=>{const r=sv.getBoundingClientRect();const cy=(e.touches?e.touches[0].clientY:e.clientY);return(cy-r.top)*(300/r.height);};
+    sv.onmousedown=e=>{drag=true;sy=ey(e);st=TVals[i];e.preventDefault()};
+    sv.ontouchstart=e=>{drag=true;sy=ey(e);st=TVals[i];e.preventDefault()};
+    const mv=e=>{if(!drag)return;const dy=ey(e)-sy;setT(i,st-dy/125*(rMax-rMin));};
+    const up=()=>drag=false;
+    if(sv._mm)window.removeEventListener('mousemove',sv._mm);
+    if(sv._tm)window.removeEventListener('touchmove',sv._tm);
+    if(sv._mu)window.removeEventListener('mouseup',sv._mu);
+    if(sv._tu)window.removeEventListener('touchend',sv._tu);
+    sv._mm=mv;sv._tm=mv;sv._mu=up;sv._tu=up;
+    window.addEventListener('mousemove',mv);
+    window.addEventListener('touchmove',mv,{passive:false});
+    window.addEventListener('mouseup',up);
+    window.addEventListener('touchend',up);
+  }
+}
+
+function updTUI(i){
+  const t = TVals[i];
+  const tv = document.getElementById('tv'+i);
+  if(tv) tv.textContent=dispT(i).toFixed(1);
+
+  const plunger = document.getElementById('plunger-group'+i);
+  const airChamber = document.getElementById('air-chamber'+i);
+  if(!plunger || !airChamber) return;
+
+  const minPos = 15; const maxPos = 140; 
+  let ratio = (t - rMin) / (rMax - rMin);
+  ratio = Math.max(0, Math.min(1, ratio));
+  const plungerPos = maxPos - (ratio * (maxPos - minPos));
+  plunger.setAttribute('transform', `translate(0, ${plungerPos})`);
+  airChamber.setAttribute('d', `M 36.5 ${plungerPos+10} L 36.5 25 L 52 16 L 52 0 L 68 0 L 68 16 L 83.5 25 L 83.5 ${plungerPos+10} Z`);
+  airChamber.setAttribute('fill-opacity', 0.15 + ratio * 0.55);
+}
+
+// ── RAF 스로틀링: 고빈도 센서 DOM 갱신을 60fps로 제한 ──
+let _uiDirtyT = new Set();
+let _uiDirtyAux = new Set();
+let _uiRaf = null;
+function _flushUI(){
+  _uiRaf = null;
+  _uiDirtyT.forEach(i => updTUI(i));
+  _uiDirtyT.clear();
+  _uiDirtyAux.forEach(i => updAuxUI(i));
+  _uiDirtyAux.clear();
+}
+function scheduleUI_T(i){ _uiDirtyT.add(i); if(!_uiRaf) _uiRaf = requestAnimationFrame(_flushUI); }
+function scheduleUI_Aux(i){ _uiDirtyAux.add(i); if(!_uiRaf) _uiRaf = requestAnimationFrame(_flushUI); }
+
+function setT(i,t){TVals[i]=Math.round(Math.max(rMin,Math.min(rMax,t))*10)/10; scheduleUI_T(i);}
+
+// ── 보조 채널 표시 (습도, 자이로, 미세먼지 등) ──
+const AUX_CH_LABEL={
+  '23:2':'💧 습도 %',
+  '25:2':'극성(Polarity)',
+  '26:2':'Y가속','26:3':'Z가속',
+  '27:2':'Y각속','27:3':'Z각속',
+  '28:2':'Y지자기','28:3':'Z지자기',
+  '29:2':'Pitch',
+  '17:2':'PM2.5','17:3':'PM1.0',
+  '18:2':'PM10','18:3':'PM1.0',
+  '19:2':'PM10','19:3':'PM2.5',
+  '32:2':'전력mW','32:3':'버스전압V',
+  '33:2':'전류mA','33:3':'버스전압V',
+};
+function getAuxLabel(sId,ch){return AUX_CH_LABEL[sId+':'+ch]||'CH'+ch;}
+function setAux(thermoIdx,slotIdx,value){
+  if(!auxData[thermoIdx])auxData[thermoIdx]=[];
+  if(!auxData[thermoIdx][slotIdx])auxData[thermoIdx][slotIdx]={label:'',value:NaN};
+  auxData[thermoIdx][slotIdx].value=Math.round(value*100)/100;
+  scheduleUI_Aux(thermoIdx);
+}
+function updAuxUI(ti){
+  const wrap=document.getElementById('ax'+ti);if(!wrap)return;
+  const items=auxData[ti]||[];
+  // liveChList 표시 상태 반영
+  const vis=[];
+  items.forEach((d,si)=>{
+    if(isNaN(d.value))return;
+    const ch=liveChList.find(c=>c.type==='aux'&&c.thermoIdx===ti&&c.slotIdx===si);
+    if(ch&&!ch.vis)return;
+    vis.push(d);
+  });
+  if(!vis.length){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  wrap.innerHTML=vis.map(d=>
+    `<div class="aux-item"><span class="aux-lbl">${d.label}</span><span class="aux-val">${d.value}</span></div>`
+  ).join('');
+}
+function clearAux(){auxData=[[],[],[],[]];for(let i=0;i<4;i++){const w=document.getElementById('ax'+i);if(w){w.style.display='none';w.innerHTML='';}}}
+function hasAux(){return auxMap.length>0;}
+
+// ── 실시간 그래프 채널 관리 ──
+const CH1_LABEL={22:'온도',23:'온도',25:'Gauss',26:'X가속',27:'X각속',28:'X지자기',29:'Roll',30:'전체가속(G)',31:'방위각(°)',32:'전류mA',33:'전력mW',34:'버스전압V'};
+function getCh1Label(sid){if(CH1_LABEL[sid])return CH1_LABEL[sid];const s=BLE_S.find(s=>s.id===sid);return s?s.n:'CH1';}
+
+// 다채널 센서의 채널별 라벨 정의 (그룹 UI용)
+const SENSOR_CH_LABELS={
+  '23':{name:'온습도센서',channels:{'1':'온도','2':'습도'}},
+  '25':{name:'자기장센서',channels:{'1':'Gauss','2':'극성'}},
+  '26':{name:'자이로-가속도(3축)',channels:{'1':'X가속','2':'Y가속','3':'Z가속'}},
+  '27':{name:'자이로-각속도(3축)',channels:{'1':'X각속도','2':'Y각속도','3':'Z각속도'}},
+  '28':{name:'자이로-지자기(3축)',channels:{'1':'X지자기','2':'Y지자기','3':'Z지자기'}},
+  '29':{name:'자이로-자세(기울기)',channels:{'1':'Roll','2':'Pitch'}},
+  '17':{name:'미세먼지센서(10)',channels:{'1':'PM10','2':'PM2.5','3':'PM1.0'}},
+  '18':{name:'미세먼지센서(2.5)',channels:{'1':'PM2.5','2':'PM10','3':'PM1.0'}},
+  '19':{name:'미세먼지센서(1.0)',channels:{'1':'PM1.0','2':'PM10','3':'PM2.5'}},
+  '32':{name:'전류센서(전류mAh)',channels:{'1':'전류mA','2':'전력mW','3':'버스전압V'}},
+  '33':{name:'전류센서(전력mW)',channels:{'1':'전력mW','2':'전류mA','3':'버스전압V'}},
+};
+
+function rebuildLiveChList(){
+  const oldVis={};liveChList.forEach(c=>{oldVis[c.key]=c.vis;});
+  liveChList=[];
+  // 장치 이름 + 인덱스 매핑 (hub.getDevices() 순서 기준)
+  const devNames={};
+  const devIdxMap={}; // deviceKey → 1-based index (hub.getDevices 순서)
+  if(hub&&typeof hub.getDevices==='function'){
+    hub.getDevices().forEach((d,di)=>{
+      const nm=deviceAliasMap[stableDeviceKey(d)]||deviceAliasMap[d.id]||d.deviceName||d.label||d.bluetoothName||`장치 ${di+1}`;
+      const keys=[];
+      if(d.macTail){devNames[d.macTail]=nm;keys.push(d.macTail);}
+      if(d.id){devNames[d.id]=nm;keys.push(d.id);}
+      if(d.label){devNames[d.label]=nm;keys.push(d.label);}
+      keys.forEach(k=>{devIdxMap[k]=di+1;});
+    });
+  }
+  // 주 채널(CH1) — 먼저 수집 후 devIdx 순 정렬
+  const tempEntries=[];
+  for(let i=0;i<N;i++){
+    const col=sFCols[i]||'';
+    const m=col.match(/^(.*):S(\d+):CH(\d+)$/i);
+    const dk=m?m[1]:'';
+    const sid=sPrimSids[i]||0;
+    const sName=BLE_S.find(s=>s.id===sid);
+    const devNm=devNames[dk]||(sName?sName.n:'장치 '+(i+1));
+    const resolvedIdx=devIdxMap[dk]||(i+1);
+    tempEntries.push({origIdx:i,dk,sid,sName,devNm,resolvedIdx});
+  }
+  // devIdx 오름차순 정렬
+  tempEntries.sort((a,b)=>a.resolvedIdx-b.resolvedIdx);
+  // origIdx→newIdx 매핑 (보조채널 thermoIdx 재매핑용)
+  const origToNew={};
+  tempEntries.forEach((e,ni)=>{origToNew[e.origIdx]=ni;});
+  // 정렬된 순서대로 thermoIdx 부여
+  tempEntries.forEach((e,ni)=>{
+    const k='t:'+ni;
+    const chLabel=e.devNm+'-'+getCh1Label(e.sid);
+    liveChList.push({key:k,label:chLabel,color:PAL[ni%PAL.length],vis:oldVis[k]!==undefined?oldVis[k]:true,type:'temp',thermoIdx:ni,slotIdx:-1,deviceKey:e.dk,deviceName:e.devNm,devIdx:e.resolvedIdx,sensorId:e.sid,sensorName:e.sName?e.sName.n:'S'+e.sid,chNum:'1'});
+  });
+  // 보조 채널(CH2+) — thermoIdx를 새 인덱스로 재매핑, 장치별 그룹 + 실제 CH번호 사용
+  // auxMap을 thermoIdx → ch 순으로 정렬하여 장치별 그룹핑 유지
+  const sortedAux=[...auxMap.map((a,si)=>({...a,origSi:si}))].sort((x,y)=>{
+    const xTi=origToNew[x.thermoIdx]??x.thermoIdx;
+    const yTi=origToNew[y.thermoIdx]??y.thermoIdx;
+    return xTi!==yTi?xTi-yTi:x.ch-y.ch;
+  });
+  sortedAux.forEach(a=>{
+    if(a.thermoIdx<0)return;
+    const newTi=origToNew[a.thermoIdx]??a.thermoIdx;
+    const k='a:'+newTi+':s'+a.sid+':c'+a.ch; // 안정 키: 장치+센서+채널
+    const ci=a.origSi%AUX_COLORS.length;
+    const parent=liveChList.find(c=>c.type==='temp'&&c.thermoIdx===newTi);
+    const parentDk=parent?.deviceKey||'';
+    const parentDevNm=parent?.deviceName||devNames[parentDk]||'';
+    const auxSensorNm=(BLE_S.find(s=>s.id===a.sid)||{}).n||'S'+a.sid;
+    const auxChLabel=parentDevNm+(parentDevNm?'-':'')+getAuxLabel(a.sid,a.ch);
+    liveChList.push({key:k,label:auxChLabel,color:AUX_COLORS[ci],vis:oldVis[k]!==undefined?oldVis[k]:true,type:'aux',thermoIdx:newTi,slotIdx:a.origSi,deviceKey:parentDk,deviceName:parentDevNm,devIdx:parent?.devIdx||0,sensorId:a.sid,sensorName:auxSensorNm,chNum:String(a.ch)});
+  });
+  renderLiveChUI();
+  updThermoHeaderEmoji();
+}
+function updThermoHeaderEmoji(){
+  const el=document.getElementById('thermo-header-label');if(!el)return;
+  const hLogo=document.getElementById('h-logo-emoji');
+  const tempChs=liveChList.filter(c=>c.type==='temp');
+  if(tempChs.length>0){
+    const sid=tempChs[0].sensorId;
+    const emoji=getSensorEmoji(sid);
+    const sName=BLE_S.find(s=>s.id===sid);
+    el.textContent=emoji+' '+(sName?sName.n:'센서');
+    if(hLogo)hLogo.textContent=emoji;
+  }else{
+    el.textContent='💉 압력계';
+    if(hLogo)hLogo.textContent='💉';
+  }
+}
+// 센서 ID별 알려진 보조 채널 목록 반환
+function getKnownAuxChannels(sensorId){
+  const chs=[];
+  const prefix=String(sensorId)+':';
+  for(const key in AUX_CH_LABEL){
+    if(key.startsWith(prefix)){
+      const chNum=parseInt(key.split(':')[1]);
+      chs.push({ch:chNum,label:AUX_CH_LABEL[key]});
+    }
+  }
+  return chs;
+}
+// 장치 정보 기반 채널 목록 미리 구축 (스키마 데이터 없이도 표시)
+function rebuildLiveChFromDevices(){
+  if(!hub||typeof hub.getDevices!=='function')return;
+  const dvs=hub.getDevices();
+  if(!dvs.length)return;
+  const oldVis={};liveChList.forEach(c=>{oldVis[c.key]=c.vis;});
+  liveChList=[];
+  let auxSlotCounter=0;
+  dvs.forEach((d,di)=>{
+    const nm=deviceAliasMap[stableDeviceKey(d)]||deviceAliasMap[d.id]||d.deviceName||d.label||d.bluetoothName||`장치 ${di+1}`;
+    const saved=getDeviceSensorSetting(d);
+    const sid=saved?.sensorId??d.sensorId??23;
+    const sName=BLE_S.find(s=>s.id===sid);
+    const dk=stableDeviceKey(d);
+    // CH1 (주 채널)
+    const k='t:'+di;
+    const ch1Label=nm+'-'+getCh1Label(sid);
+    liveChList.push({
+      key:k,
+      label:ch1Label,
+      color:PAL[di%PAL.length],
+      vis:oldVis[k]!==undefined?oldVis[k]:true,
+      type:'temp',thermoIdx:di,slotIdx:-1,
+      deviceKey:dk,
+      deviceName:nm,
+      devIdx:di+1,
+      sensorId:sid,
+      sensorName:sName?sName.n:'S'+sid,
+      chNum:'1'
+    });
+    // CH2+ (보조 채널) — 센서 ID 기반으로 알려진 채널 모두 추가
+    const auxChs=getKnownAuxChannels(sid);
+    auxChs.forEach(ac=>{
+      const si=auxSlotCounter++;
+      const ak='a:'+di+':s'+sid+':c'+ac.ch; // 안정 키: 장치+센서+채널
+      const ci=si%AUX_COLORS.length;
+      const auxLabel=nm+'-'+getAuxLabel(sid,ac.ch);
+      liveChList.push({
+        key:ak,
+        label:auxLabel,
+        color:AUX_COLORS[ci],
+        vis:oldVis[ak]!==undefined?oldVis[ak]:true,
+        type:'aux',thermoIdx:di,slotIdx:si,
+        deviceKey:dk,
+        deviceName:nm,
+        devIdx:di+1,
+        sensorId:sid,
+        sensorName:sName?sName.n:'S'+sid,
+        chNum:String(ac.ch)
+      });
+    });
+  });
+  // 장치 수에 맞게 압력계 수 조정
+  if(dvs.length>0&&dvs.length<=4&&dvs.length!==N) setN(dvs.length);
+  renderLiveChUI();
+  updThermoHeaderEmoji();
+  renderThermos();
+}
+function renderLiveChUI(){
+  const el=document.getElementById('live-ch-list');if(!el)return;
+  if(!liveChList.length){el.innerHTML='<span style="color:var(--muted)">센서를 연결하고 수신을 시작하면 채널 목록이 표시됩니다.</span>';return;}
+
+  // 장치(deviceKey)+센서(sensorId) 기준 그룹핑
+  const groups=[];const groupMap={};
+  liveChList.forEach(c=>{
+    const gk=(c.deviceKey||'')+'::S'+(c.sensorId||'');
+    if(!groupMap[gk]){
+      groupMap[gk]={gk,deviceKey:c.deviceKey,deviceName:c.deviceName,sensorId:c.sensorId,sensorName:c.sensorName,channels:[]};
+      groups.push(groupMap[gk]);
+    }
+    groupMap[gk].channels.push(c);
+  });
+
+  let html='';let gi=0;
+  groups.forEach(g=>{
+    gi++;
+    const isMulti=g.channels.length>1;
+    if(isMulti){
+      // ── 다채널 센서: 그룹 헤더 + 채널 리스트 ──
+      const sObj=BLE_S.find(s=>s.id===g.sensorId);
+      const sDispName=sObj?sObj.n:(g.sensorName||'S'+g.sensorId);
+      const emoji=getSensorEmoji(g.sensorId);
+      html+=`<div style="background:var(--surface,#faf8f5);border:1.5px solid #c8dfe8;border-radius:10px;margin-bottom:6px;overflow:hidden">`;
+      html+=`<div style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:linear-gradient(135deg,#eaf4fb 0%,#f3f8fd 100%);border-bottom:1px solid #d8e8f0">`;
+      html+=`<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#3b82f6;color:#fff;font-size:10px;font-weight:800;flex-shrink:0">${gi}</span>`;
+      html+=`<span style="font-size:12px;font-weight:800;color:var(--text,#2e3330)">${g.deviceName||'장치'}</span>`;
+      html+=`<span style="font-size:11px;color:var(--muted,#6b6560);font-weight:600">· ${emoji} ${sDispName}</span>`;
+      html+=`</div>`;
+      g.channels.forEach(c=>{
+        const onOff=c.vis?'ON':'OFF';
+        const btnBg=c.vis?c.color+'22':'var(--surface,#faf8f5)';
+        const btnBorder=c.vis?c.color:'var(--border,#d6d0c8)';
+        const btnColor=c.vis?c.color:'var(--muted,#6b6560)';
+        // 채널 라벨: SENSOR_CH_LABELS 매핑 → getAuxLabel/getCh1Label → 폴백 CH번호
+        const sid=String(c.sensorId);
+        const chN=c.chNum||'1';
+        let dispLabel=chN==='1'?getCh1Label(c.sensorId):getAuxLabel(c.sensorId,parseInt(chN));
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 10px 5px 16px;border-bottom:1px solid #edf2f7">`;
+        html+=`<span style="width:9px;height:9px;border-radius:50%;background:${c.color};flex-shrink:0"></span>`;
+        html+=`<span style="flex:1;font-size:12px;font-weight:700;color:var(--text,#2e3330)">${dispLabel}</span>`;
+        html+=`<span style="font-size:10px;font-weight:700;color:var(--muted,#6b6560);background:#f0f0ec;padding:1px 6px;border-radius:4px">CH${chN}</span>`;
+        html+=`<button onclick="toggleLiveCh('${c.key}')"
+          style="min-width:38px;padding:2px 10px;border-radius:6px;border:1.5px solid ${btnBorder};background:${btnBg};color:${btnColor};font-size:11px;font-weight:800;cursor:pointer;transition:all .15s">${onOff}</button>`;
+        html+=`</div>`;
+      });
+      html+=`</div>`;
+    }else{
+      // ── 단일 채널 센서 ──
+      const c=g.channels[0];
+      const onOff=c.vis?'ON':'OFF';
+      const btnBg=c.vis?c.color+'22':'var(--surface,#faf8f5)';
+      const btnBorder=c.vis?c.color:'var(--border,#d6d0c8)';
+      const btnColor=c.vis?c.color:'var(--muted,#6b6560)';
+      html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1.5px solid var(--border,#d6d0c8);border-radius:10px;margin-bottom:6px;background:var(--surface,#faf8f5)">`;
+      html+=`<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#3b82f6;color:#fff;font-size:10px;font-weight:800;flex-shrink:0">${gi}</span>`;
+      html+=`<span style="width:9px;height:9px;border-radius:50%;background:${c.color};flex-shrink:0"></span>`;
+      html+=`<span style="flex:1;font-size:12px;font-weight:700;color:var(--text,#2e3330)">${c.label}</span>`;
+      html+=`<button onclick="toggleLiveCh('${c.key}')"
+        style="min-width:38px;padding:2px 10px;border-radius:6px;border:1.5px solid ${btnBorder};background:${btnBg};color:${btnColor};font-size:11px;font-weight:800;cursor:pointer;transition:all .15s">${onOff}</button>`;
+      html+=`</div>`;
+    }
+  });
+  el.innerHTML=html;
+}
+function toggleLiveCh(key){
+  const ch=liveChList.find(c=>c.key===key);if(!ch)return;
+  ch.vis=!ch.vis;
+  renderLiveChUI();
+  // 게이지 보조 뱃지도 갱신
+  if(ch.type==='aux'&&ch.thermoIdx>=0)updAuxUI(ch.thermoIdx);
+  // 기록표 헤더/바디 갱신
+  renderTH();renderTB();
+  _liveNeedsUpdate=true;
+  if(document.getElementById('l-tab').classList.contains('on'))flushLiveChart();
+}
+
+function dispT(i){return TVals[i];}
+function uLbl(){return unit;}
+
+// ════════════ 설정 ════════════
+// 센서별 이모지 매핑
+const SENSOR_EMOJI={
+  1:'🔧',2:'⚡',3:'🔘',4:'🔧',5:'🧪',6:'💨',7:'💨',8:'💨',
+  9:'🌫️',10:'💨',11:'🔥',12:'🌬️',13:'⛰️',14:'📊',15:'🌡️',16:'⚖️',
+  17:'🌫️',18:'🌫️',19:'🌫️',20:'☀️',21:'🔊',22:'🌊',23:'🌡️',24:'🏭',
+  25:'🧲',26:'📐',27:'🔄',28:'🧭',29:'📐',30:'📐',31:'🧭',32:'⚡',
+  33:'⚡',34:'⚡',35:'⚡',36:'📏',37:'🔘',38:'👆',39:'🚶'
+};
+function getSensorEmoji(sensorId){return SENSOR_EMOJI[sensorId]||'📡';}
+
+function setThermoMode(mode){
+  thermoMode=mode;
+  document.getElementById('thermo-manual').classList.toggle('on',mode==='manual');
+  document.getElementById('thermo-auto').classList.toggle('on',mode==='auto');
+  document.getElementById('thermo-manual-area').style.display=mode==='manual'?'block':'none';
+  if(mode==='auto') autoFitThermoRange();
+}
+function autoFitThermoRange(){
+  const vals=TVals.slice(0,N).filter(v=>isFinite(v));
+  if(!vals.length)return;
+  const mn=Math.min(...vals), mx=Math.max(...vals);
+  const margin=Math.max(5,(mx-mn)*0.2);
+  const newMin=Math.floor(mn-margin);
+  const newMax=Math.ceil(mx+margin);
+  if(newMin===rMin && newMax===rMax) return;
+  rMin=newMin; rMax=newMax;
+  document.getElementById('rmin').value=rMin;
+  document.getElementById('rmax').value=rMax;
+  for(let i=0;i<N;i++) updTUI(i);
+  syncLiveChartYAxis();
+}
+function syncLiveChartYAxis(){
+  if(liveChart){liveChart.options.scales.y.min=rMin;liveChart.options.scales.y.max=rMax;liveChart.update('none');}
+  if(dpFSLiveChart){dpFSLiveChart.options.scales.y.min=rMin;dpFSLiveChart.options.scales.y.max=rMax;dpFSLiveChart.update('none');}
+}
+function updPendUnitUI(){
+  document.getElementById('ukpa')?.classList.toggle('on',pendUnit==='kPa');
+}
+function applyThermoSettings(){
+  // 범위 적용
+  if(thermoMode==='manual'){
+    const a=parseFloat(document.getElementById('rmin').value);
+    const b=parseFloat(document.getElementById('rmax').value);
+    rMin=isNaN(a)?10:a;
+    rMax=isNaN(b)?150:b;
+    if(rMin>=rMax){rMax=rMin+10;document.getElementById('rmax').value=rMax;}
+  
+    for(let i=0;i<N;i++)setT(i,Math.max(rMin,Math.min(rMax,TVals[i])));
+  }else{
+    autoFitThermoRange();
+  }
+  unit=pendUnit;
+  for(let i=0;i<4;i++){const tu=document.getElementById('tu'+i);const tv=document.getElementById('tv'+i);if(tu)tu.textContent=uLbl();if(tv)tv.textContent=dispT(i).toFixed(1);}
+  renderThermos();
+  syncLiveChartYAxis();
+  updChart();
+  toast('✅ 압력계 설정이 적용되었어요!');
+}
+function applyGraphSettings(){
+  updChart();
+  toast('✅ 그래프 설정이 적용되었어요!');
+}
+// 기존 호환용
+function updRange(){
+  const a=parseFloat(document.getElementById('rmin').value);
+  const b=parseFloat(document.getElementById('rmax').value);
+  rMin=isNaN(a)?10:a;
+  rMax=isNaN(b)?150:b;
+  if(rMin>=rMax){rMax=rMin+10;document.getElementById('rmax').value=rMax;}
+
+  for(let i=0;i<N;i++)setT(i,Math.max(rMin,Math.min(rMax,TVals[i])));
+  renderThermos();
+  syncLiveChartYAxis();
+}
+
+function setYM(m){
+  yMode=m;['a','m'].forEach((x,i)=>document.getElementById('y'+['a','m'][i]).classList.toggle('on',x===m[0]));
+  document.getElementById('ymanual').style.display=m==='manual'?'block':'none';
+}
+
+// ════════════ 기록 ════════════
+function now(){const d=new Date();return`${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;}
+function recordData(){
+  rCnt++;
+  const vals=[];for(let i=0;i<N;i++)vals.push(dispT(i));
+  const aux=snapAux();
+  recs.push({id:rCnt,vals,aux,time:now(),memo:''});
+  renderTB();updChart();updStats();
+  const u=uLbl(),vs=N===1?`${vals[0]}${u}`:vals.map((v,i)=>`P${i+1}:${v}${u}`).join(' ');
+  const as=flatAuxStr(aux);
+  toast(`✏️ ${rCnt}번 기록! (${vs}${as?' '+as:''})`);
+  if(!isAuto){
+    if(_multiView) multiSubTab('t');
+    else switchTab('t');
+  }
+  if(window.innerWidth<=767) setMobAct('table');
+  setTimeout(()=>{const w=document.getElementById('tw');w.scrollTop=w.scrollHeight;},50);
+}
+// 보조 채널 스냅샷/헬퍼
+// 표시(ON) 상태인 보조 채널 (실시간 차트 표시용)
+function visAuxList(){return liveChList.filter(c=>c.type==='aux'&&c.vis);}
+// 모든 보조 채널 (기록·엑셀·기록표용 — vis 상태 무관)
+function allAuxList(){return liveChList.filter(c=>c.type==='aux');}
+function snapAux(){
+  const all=allAuxList();
+  if(!all.length)return[];
+  return all.map(c=>{
+    const items=auxData[c.thermoIdx]||[];
+    const d=items[c.slotIdx];
+    return{key:c.key,label:c.label,devIdx:c.devIdx,value:d&&!isNaN(d.value)?Math.round(d.value*100)/100:null};
+  });
+}
+function flatAuxStr(snap){return snap.filter(d=>d.value!=null).map(d=>`${d.label}:${d.value}`).join(' ');}
+function auxColHeaders(){return allAuxList().map(c=>c.label+(N>1?' '+(c.devIdx):''));}
+function auxColVals(rec){
+  if(!rec.aux||!rec.aux.length)return auxColHeaders().map(()=>'');
+  const all=allAuxList();
+  return all.map(c=>{const a=rec.aux.find(d=>d.key===c.key);return a&&a.value!=null?a.value:'';});
+}
+function auxBadgesHTML(sz){let h='';for(let i=0;i<N;i++)(auxData[i]||[]).forEach((d,si)=>{if(isNaN(d.value))return;const ch=liveChList.find(c=>c.type==='aux'&&c.thermoIdx===i&&c.slotIdx===si);if(ch&&!ch.vis)return;h+=`<span style="padding:2px 10px;border-radius:14px;font-size:${sz}px;font-weight:900;color:#fff;background:#3b9ed6">${d.label}: ${d.value}</span>`;});return h;}
+
+function renderTH(){
+  const th=document.getElementById('th');
+  const ac=auxColHeaders();
+  let h='<tr><th style="width:40px">번호</th>';
+  for(let i=0;i<N;i++)h+=`<th style="color:${PAL[i]}">압력${N>1?' '+(i+1):''}</th>`;
+  ac.forEach(l=>{h+=`<th style="color:#3b9ed6;font-size:11px">${l}</th>`;});
+  h+='<th>시각</th><th>메모</th><th style="width:34px"></th></tr>';
+  th.innerHTML=h;
+}
+function renderTB(){
+  const tb=document.getElementById('tb'),u=uLbl(),ac=auxColHeaders(),cs=3+N+ac.length;
+  if(!recs.length){tb.innerHTML=`<tr><td colspan="${cs}" class="em">아직 기록이 없어요.<br>📝 압력계를 확인하고 <b>기록하기</b>를 눌러보세요!</td></tr>`;return;}
+  tb.innerHTML=recs.map((r,i)=>{
+    let tc='';
+    for(let ci=0;ci<r.vals.length;ci++)tc+=`<td class="tv" style="color:${tCol(TVals[ci])}">${r.vals[ci]}${u}</td>`;
+    const av=auxColVals(r);
+    av.forEach(v=>{tc+=`<td style="color:#3b9ed6;font-weight:700;font-size:12px">${v!==''?v:'—'}</td>`;});
+    return`<tr class="${i===recs.length-1?'nr':''}">
+      <td style="font-weight:700;color:var(--muted)">${r.id}</td>${tc}
+      <td style="color:var(--sub);font-size:12px">${r.time}</td>
+      <td><input class="mi" placeholder="메모..." value="${esc(r.memo)}" data-i="${i}" onchange="recs[+this.dataset.i].memo=this.value;updChart()"></td>
+      <td><button class="dbt" onclick="delR(${i})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function delR(i){recs.splice(i,1);renderTB();updChart();updStats();}
+function clearAll(){
+  if(!recs.length){toast('🗑 지울 기록이 없어요');return;}
+  if(!confirm(`${recs.length}개 기록을 모두 지울까요?`))return;
+  recs=[];rCnt=0;renderTB();updChart();updStats();
+  // 전체화면 오버레이가 열려있으면 즉시 반영
+  if(document.getElementById('dp-fs-overlay').classList.contains('show')){
+    dpFSTab(dpFSCurrentTab);
+  }
+  toast('🗑 모든 기록을 지웠어요');
+}
+
+// ════════════ 차트 ════════════
+function initChart(){
+  const ctx=document.getElementById('mc').getContext('2d');
+  chart=new Chart(ctx,{type:'line',data:{labels:[],datasets:[]},options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:250},
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:true,position:'top',align:'end',labels:{usePointStyle:true,boxWidth:9,font:{size:11}}}},
+    scales:{
+      x:{grid:{color:'rgba(79,126,248,.08)'},title:{display:true,text:'측정 번호',font:{size:12,weight:'bold'},color:'#5b6ea8'},ticks:{font:{size:11},color:'#9aabd4'}},
+      y:{grid:{color:'rgba(79,126,248,.18)'},title:{display:true,text:`압력 (${uLbl()})`,font:{size:12,weight:'bold'},color:'#5b6ea8'},ticks:{font:{size:11},color:'#9aabd4'}}
+    }
+  }});
+}
+let obsZoom = 500; // 관찰 그래프 X축 표시 개수
+function setObsZoom(v){ obsZoom=parseInt(v)||500; updChart(); }
+function syncLiveZoom(v){
+  const el=document.getElementById('live-zoom');if(el){el.value=v;document.getElementById('live-zoom-val').textContent=v;}
+}
+function syncObsZoom(v){
+  const el=document.getElementById('obs-zoom');if(el){el.value=v;document.getElementById('obs-zoom-val').textContent=v;}
+}
+function updChart(){
+  if(!chart)return;
+  const nd=!recs.length;document.getElementById('ndo').style.display=nd?'flex':'none';
+  if(nd){chart.data.labels=[];chart.data.datasets=[];chart.update('none');return;}
+  // 관찰 그래프 줌: 최근 obsZoom개만 표시
+  const viewRecs = obsZoom >= recs.length ? recs : recs.slice(-obsZoom);
+  const xt=document.getElementById('xtype').value;
+  let lbs;
+  if(xt==='time')lbs=viewRecs.map(r=>r.time);
+  else if(xt==='memo')lbs=viewRecs.map((r,i)=>r.memo||(i+1)+'번');
+  else lbs=viewRecs.map(r=>r.id+'번');
+  chart.data.labels=lbs;
+  chart.data.datasets=[];
+  for(let ci=0;ci<N;ci++){
+    const col=PAL[ci];
+    chart.data.datasets.push({
+      type:gType==='bar'?'bar':'line',
+      label:N>1?TNAMES[ci]:'압력',
+      data:viewRecs.map(r=>r.vals[ci]??null),
+      borderColor:col,backgroundColor:gType==='bar'?col+'bb':col+'28',
+      borderWidth:2,pointRadius:3,pointBackgroundColor:col,tension:gType==='bar'?undefined:.3,fill:false
+    });
+  }
+  // 자동평균 선 추가
+  if(showAvgLine){
+    for(let ci=0;ci<N;ci++){
+      const vals=viewRecs.map(r=>r.vals[ci]??null).filter(v=>v!==null);
+      if(!vals.length) continue;
+      const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+      const col=PAL[ci];
+      chart.data.datasets.push({
+        type:'line',label:(N>1?TNAMES[ci]+' ':'')+'평균 '+avg.toFixed(1),
+        data:Array(viewRecs.length).fill(avg),
+        borderColor:col,borderWidth:2,borderDash:[6,4],
+        pointRadius:0,pointHoverRadius:0,fill:false,
+        backgroundColor:'transparent'
+      });
+    }
+  }
+  chart.options.scales.x.title.text=xt==='time'?'측정 시각':xt==='memo'?'메모':'측정 번호';
+  chart.options.scales.y.title.text=`압력 (${uLbl()})`;
+  if(yMode==='manual'){
+    const _yMinV=parseFloat(document.getElementById('ymin').value);
+    const _yMaxV=parseFloat(document.getElementById('ymax').value);
+    chart.options.scales.y.min=isNaN(_yMinV)?undefined:_yMinV;
+    chart.options.scales.y.max=isNaN(_yMaxV)?undefined:_yMaxV;
+  }else{chart.options.scales.y.min=undefined;chart.options.scales.y.max=undefined;}
+  chart.update('none');
+}
+function updStats(){
+  const e=document.getElementById('stat-txt');
+  if(!recs.length){e.textContent='';return;}
+  const av=recs.flatMap(r=>r.vals),mn=Math.min(...av).toFixed(1),mx=Math.max(...av).toFixed(1),ag=(av.reduce((a,b)=>a+b,0)/av.length).toFixed(1);
+  e.textContent=`${recs.length}개 | 최소 ${mn} | 최대 ${mx} | 평균 ${ag} ${uLbl()}`;
+}
+
+// ════════════ 저장 ════════════
+function dlCSV(){
+  if(!recs.length){toast('💾 저장할 데이터가 없어요');return;}
+  const u=uLbl(),ac=auxColHeaders();
+  const hd=['번호',...Array.from({length:N},(_,i)=>`압력${i+1}(${u})`),...ac,'시각','메모'];
+  const rows=[hd.join(',')];
+  recs.forEach(r=>{
+    const row=[r.id,...r.vals,...auxColVals(r),r.time,`"${r.memo}"`];rows.push(row.join(','));
+  });
+  const b=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download=`압력기록_${new Date().toLocaleDateString('ko')}.csv`;a.click();
+  toast('💾 엑셀(CSV)로 저장했어요!');
+}
+function copyData(){
+  if(!recs.length){toast('📋 복사할 데이터가 없어요');return;}
+  const u=uLbl(),ac=auxColHeaders();
+  const hd=['번호',...Array.from({length:N},(_,i)=>`압력${i+1}(${u})`),...ac,'시각','메모'];
+  const rows=[hd.join('\t')];
+  recs.forEach(r=>{
+    const row=[r.id,...r.vals,...auxColVals(r),r.time,r.memo];rows.push(row.join('\t'));
+  });
+  navigator.clipboard.writeText(rows.join('\n')).then(()=>toast('📋 데이터를 클립보드에 복사했어요!'),()=>toast('❌ 복사 실패 (HTTPS 환경 필요)'));
+}
+function chartPNG(){
+  if(!chart||!recs.length)return null;
+  const o=document.createElement('canvas');o.width=chart.canvas.width;o.height=chart.canvas.height;
+  const c=o.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,o.width,o.height);c.drawImage(chart.canvas,0,0);
+  return o.toDataURL('image/png');
+}
+function dlChart(){
+  if(!recs.length){toast('📷 그래프 데이터가 없어요');return;}
+  const url=chartPNG();if(!url)return;
+  const a=document.createElement('a');a.href=url;a.download=`압력그래프_${new Date().toLocaleDateString('ko')}.png`;a.click();
+  toast('📷 그래프 이미지를 저장했어요!');
+}
+async function copyChart(btn){
+  if(!recs.length){toast('📷 그래프 데이터가 없어요');return;}
+  const url=chartPNG();if(!url)return;
+  try{
+    const bp=fetch(url).then(r=>r.blob());
+    await navigator.clipboard.write([new ClipboardItem({'image/png':bp})]);
+    const old=btn.innerHTML;btn.style.minWidth=btn.offsetWidth+'px';
+    btn.innerHTML='✅ 복사됨!';btn.style.background='var(--grn-s)';btn.style.color='var(--grn)';
+    setTimeout(()=>{btn.innerHTML=old;btn.style.background='';btn.style.color='';btn.style.minWidth='';},1800);
+  }catch(e){toast('❌ 이미지 복사 실패 (Chrome + HTTPS 필요)');}
+}
+
+// ════════════ 자동 기록 ════════════
+function togAuto(){
+  if(isAuto){
+    clearInterval(autoTmr);autoTmr=null;isAuto=false;
+    document.getElementById('arb').textContent='▶ 시작';document.getElementById('arb').classList.add('on');
+    document.getElementById('ars').textContent='대기 중';toast('⏹ 자동 기록 중지');
+  }else{
+    const iv=parseFloat(document.getElementById('aiv').value)||5,mx=parseInt(document.getElementById('amx').value)||50;
+    isAuto=true;document.getElementById('arb').textContent='⏹ 중지';document.getElementById('arb').classList.remove('on');
+    document.getElementById('ars').textContent='기록 중...';
+    autoTmr=setInterval(()=>{if(recs.length>=mx){togAuto();toast(`✅ ${mx}개 자동 기록 완료!`);return;}recordData();},iv*1000);
+    toast(`▶ ${iv}초마다 자동 기록 시작!`);
+  }
+}
+
+// ════════════ 데이터 패널 전체화면 ════════════
+let dpFSChart = null;
+let dpFSCurrentTab = 't';
+
+function openDPFS(){
+  const ov = document.getElementById('dp-fs-overlay');
+  // 현재 활성 탭 감지 (실시간 포함)
+  if(document.getElementById('ltab-btn').classList.contains('on')) dpFSCurrentTab = 'l';
+  else if(document.getElementById('gtab-btn').classList.contains('on')) dpFSCurrentTab = 'g';
+  else dpFSCurrentTab = 't';
+  dpFSTab(dpFSCurrentTab);
+  ov.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeDPFS(){
+  document.getElementById('dp-fs-overlay').classList.remove('show');
+  document.body.style.overflow = '';
+  if(dpFSChart){ dpFSChart.destroy(); dpFSChart = null; }
+  if(dpFSLiveChart){ dpFSLiveChart.destroy(); dpFSLiveChart = null; }
+  if(_dpFSLiveRaf){ cancelAnimationFrame(_dpFSLiveRaf); _dpFSLiveRaf = null; }
+}
+function dpFSTab(t){
+  dpFSCurrentTab = t;
+  const lPane = document.getElementById('dp-fs-l');
+  const tPane = document.getElementById('dp-fs-t');
+  const gPane = document.getElementById('dp-fs-g');
+  const ltab = document.getElementById('dp-ltab');
+  const ttab = document.getElementById('dp-ttab');
+  const gtab = document.getElementById('dp-gtab');
+
+  if(ltab) ltab.classList.toggle('on', t === 'l');
+  ttab.classList.toggle('on', t === 't');
+  gtab.classList.toggle('on', t === 'g');
+
+  lPane.style.display = 'none';
+  tPane.style.display = 'none';
+  gPane.style.display = 'none';
+
+  // 전체화면 탭별 액션 버튼 전환
+  document.getElementById('dp-fs-live-btns').style.display = t==='l'?'flex':'none';
+  document.getElementById('dp-fs-table-btns').style.display = t==='t'?'flex':'none';
+  document.getElementById('dp-fs-graph-btns').style.display = t==='g'?'flex':'none';
+
+  if(t === 'l'){
+    lPane.style.display = 'flex';
+    setTimeout(renderDPFSLive, 60);
+  } else if(t === 't'){
+    tPane.style.display = 'flex';
+    renderDPFSTable();
+  } else {
+    gPane.style.display = 'flex';
+    setTimeout(renderDPFSChart, 60);
+  }
+  // 타이틀 업데이트
+  const titles = { l:'📡 실시간 압력 — 전체 화면', t:'📋 관찰 기록표 — 전체 화면', g:'📊 관찰 그래프 — 전체 화면' };
+  document.getElementById('dp-fs-title').textContent = titles[t] || '';
+}
+
+function renderDPFSTable(){
+  const thead = document.getElementById('dp-th');
+  const tbody = document.getElementById('dp-tb');
+  const u = uLbl(), ac=auxColHeaders(), cs = 3 + N + ac.length;
+  let h = '<tr><th style="width:42px">번호</th>';
+  for(let i=0;i<N;i++)h+=`<th style="color:${PAL[i]}">압력${N>1?' '+(i+1):''}</th>`;
+  ac.forEach(l=>{h+=`<th style="color:#3b9ed6;font-size:11px">${l}</th>`;});
+  h += '<th>시각</th><th>메모</th></tr>';
+  thead.innerHTML = h;
+  if(!recs.length){
+    tbody.innerHTML = `<tr><td colspan="${cs}" class="em">아직 기록이 없어요.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = recs.map((r,i) => {
+    let tc='';
+    for(let ci=0;ci<r.vals.length;ci++)tc+=`<td class="tv" style="color:${tCol(TVals[ci])}">${r.vals[ci]}${u}</td>`;
+    auxColVals(r).forEach(v=>{tc+=`<td style="color:#3b9ed6;font-weight:700;font-size:12px">${v!==''?v:'—'}</td>`;});
+    return `<tr><td style="font-weight:700;color:var(--muted)">${r.id}</td>${tc}
+      <td style="color:var(--sub);font-size:12px">${r.time}</td>
+      <td style="font-size:12px;color:var(--sub)">${esc(r.memo)||'—'}</td>
+    </tr>`;
+  }).join('');
+  const dp = document.getElementById('dp-stat');
+  if(dp && recs.length){
+    const av=recs.flatMap(r=>r.vals);
+    dp.textContent=`${recs.length}개 | 최소 ${Math.min(...av).toFixed(1)} | 최대 ${Math.max(...av).toFixed(1)} | 평균 ${(av.reduce((a,b)=>a+b,0)/av.length).toFixed(1)} ${uLbl()}`;
+  }
+}
+
+function renderDPFSChart(){
+  const canvas = document.getElementById('dp-chart');
+  if(!canvas) return;
+  if(dpFSChart){ dpFSChart.destroy(); dpFSChart = null; }
+
+  // 관찰 그래프 줌 적용
+  const viewRecs = obsZoom >= recs.length ? recs : recs.slice(-obsZoom);
+  const xt = document.getElementById('xtype').value;
+  let lbs;
+  if(xt==='time') lbs = viewRecs.map(r=>r.time);
+  else if(xt==='memo') lbs = viewRecs.map((r,i)=>r.memo||(i+1)+'번');
+  else lbs = viewRecs.map(r=>r.id+'번');
+
+  const datasets = [];
+  for(let ci=0;ci<N;ci++){
+    const col = PAL[ci];
+    datasets.push({
+      type: gType==='bar'?'bar':'line',
+      label: N>1?TNAMES[ci]:'압력',
+      data: viewRecs.map(r=>r.vals[ci]??null),
+      borderColor: col, backgroundColor: gType==='bar'?col+'bb':col+'28',
+      borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: col,
+      tension: gType==='bar'?undefined:.3, fill: false
+    });
+  }
+  // 자동평균 선 추가
+  if(showAvgLine){
+    for(let ci=0;ci<N;ci++){
+      const vals=viewRecs.map(r=>r.vals[ci]??null).filter(v=>v!==null);
+      if(!vals.length) continue;
+      const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+      const col=PAL[ci];
+      datasets.push({
+        type:'line',label:(N>1?TNAMES[ci]+' ':'')+'평균 '+avg.toFixed(1),
+        data:Array(viewRecs.length).fill(avg),
+        borderColor:col,borderWidth:2.5,borderDash:[6,4],
+        pointRadius:0,pointHoverRadius:0,fill:false,
+        backgroundColor:'transparent'
+      });
+    }
+  }
+
+  dpFSChart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { labels: lbs, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: {duration:200},
+      interaction: {mode:'index', intersect:false},
+      plugins: {
+        legend: {display:true, position:'top', align:'end', labels:{usePointStyle:true, boxWidth:9, font:{size:12}}}
+      },
+      scales: {
+        x: {grid:{color:'rgba(79,126,248,.08)'}, title:{display:true, text:xt==='time'?'측정 시각':xt==='memo'?'메모':'측정 번호', font:{size:13,weight:'bold'}, color:'#5b6ea8'}, ticks:{font:{size:12}}},
+        y: {grid:{color:'rgba(79,126,248,.18)'}, title:{display:true, text:`압력 (${uLbl()})`, font:{size:13,weight:'bold'}, color:'#5b6ea8'}, ticks:{font:{size:12}}}
+      }
+    }
+  });
+
+  // 통계
+  const dp = document.getElementById('dp-stat');
+  if(dp && recs.length){
+    const av=recs.flatMap(r=>r.vals);
+    dp.textContent=`${recs.length}개 | 최소 ${Math.min(...av).toFixed(1)} | 최대 ${Math.max(...av).toFixed(1)} | 평균 ${(av.reduce((a,b)=>a+b,0)/av.length).toFixed(1)} ${uLbl()}`;
+  }
+  // 글로벌 그래프 타입 버튼 동기화
+  ['l','b'].forEach(x=>document.getElementById('dp-g'+x)?.classList.toggle('on',x===gType[0]));
+}
+
+function setGTFS(t){
+  gType = t;
+  ['l','b'].forEach(x=>{
+    document.getElementById('g'+x)?.classList.toggle('on',x===t[0]);
+    document.getElementById('dp-g'+x)?.classList.toggle('on',x===t[0]);
+  });
+  updChart();
+  if(dpFSChart) renderDPFSChart();
+}
+
+// 기존 setGT를 setGTFS로 연결
+function setGT(t){ setGTFS(t); }
+
+// ════════════ 전체화면 실시간 그래프 ════════════
+let dpFSLiveChart = null;
+let _dpFSLiveRaf = null;
+let _dpFSLiveNeedsUpdate = false;
+
+function renderDPFSLive(){
+  const canvas = document.getElementById('dp-fs-live-chart');
+  if(!canvas) return;
+  const ndo = document.getElementById('dp-fs-live-ndo');
+  if(ndo) ndo.style.display = liveBuf.length > 0 ? 'none' : 'flex';
+
+  if(dpFSLiveChart){ dpFSLiveChart.destroy(); dpFSLiveChart = null; }
+  const view = liveWin >= liveBuf.length ? liveBuf : liveBuf.slice(-liveWin);
+  const labels = view.map(r => r.t);
+  const datasets = Array.from({length:N}, (_,i)=>({
+    label: N>1 ? TNAMES[i] : '압력',
+    data: view.map(r => r.vals[i] ?? null),
+    borderColor: PAL[i], backgroundColor: PAL[i]+'22',
+    borderWidth: 2.5, pointRadius: 2, tension: 0.3, fill: false
+  }));
+  dpFSLiveChart = new Chart(canvas.getContext('2d'), {
+    type: 'line', data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: {mode:'index', intersect:false},
+      plugins: { legend: {display:true, position:'top', align:'end', labels:{usePointStyle:true, boxWidth:9, font:{size:12}}} },
+      scales: {
+        x: {grid:{color:'rgba(79,126,248,.08)'}, title:{display:true, text:'시각', font:{size:13,weight:'bold'}, color:'#5b6ea8'}, ticks:{font:{size:11}, maxTicksLimit:12, maxRotation:0}},
+        y: {min:rMin, max:rMax, grid:{color:'rgba(79,126,248,.18)'}, title:{display:true, text:`압력 (${uLbl()})`, font:{size:13,weight:'bold'}, color:'#5b6ea8'}, ticks:{font:{size:12}}}
+      }
+    }
+  });
+  // 현재 값 표시
+  const valsEl = document.getElementById('dp-fs-live-vals');
+  if(valsEl && liveBuf.length > 0){
+    const last = liveBuf[liveBuf.length-1].vals;
+    let html = last.slice(0,N).map((v,i)=>
+      `<span style="padding:2px 10px;border-radius:14px;font-size:13px;font-weight:900;color:#fff;background:${PAL[i]}">${TNAMES[i]}: ${v.toFixed(1)} ${uLbl()}</span>`
+    ).join('');
+    html+=auxBadgesHTML(13);
+    valsEl.innerHTML = html;
+  }
+}
+
+function flushDPFSLive(){
+  _dpFSLiveRaf = null;
+  if(!dpFSLiveChart || !_dpFSLiveNeedsUpdate) return;
+  _dpFSLiveNeedsUpdate = false;
+  const view = liveWin >= liveBuf.length ? liveBuf : liveBuf.slice(-liveWin);
+  dpFSLiveChart.data.labels = view.map(r => r.t);
+  if(dpFSLiveChart.data.datasets.length !== N){
+    dpFSLiveChart.data.datasets = Array.from({length:N}, (_,i)=>({
+      label: N>1 ? TNAMES[i] : '압력', data: [],
+      borderColor: PAL[i], backgroundColor: PAL[i]+'22',
+      borderWidth: 2.5, pointRadius: 2, tension: 0.3, fill: false
+    }));
+  }
+  for(let i=0;i<N;i++) dpFSLiveChart.data.datasets[i].data = view.map(r => r.vals[i] ?? null);
+  dpFSLiveChart.options.scales.y.min = rMin;
+  dpFSLiveChart.options.scales.y.max = rMax;
+  dpFSLiveChart.update('none');
+  // 현재 값
+  const valsEl = document.getElementById('dp-fs-live-vals');
+  const ndo = document.getElementById('dp-fs-live-ndo');
+  if(ndo) ndo.style.display = liveBuf.length > 0 ? 'none' : 'flex';
+  if(valsEl && liveBuf.length > 0){
+    const last = liveBuf[liveBuf.length-1].vals;
+    let html = last.slice(0,N).map((v,i)=>
+      `<span style="padding:2px 10px;border-radius:14px;font-size:13px;font-weight:900;color:#fff;background:${PAL[i]}">${TNAMES[i]}: ${v.toFixed(1)} ${uLbl()}</span>`
+    ).join('');
+    html+=auxBadgesHTML(13);
+    valsEl.innerHTML = html;
+  }
+}
+
+// ── 전체화면 압력계 크기 조정 (ResizeObserver 사용) ──
+let _fsRO = null;
+
+function calcFSSizes(){
+  const inner = document.getElementById('fs-inner');
+  const head  = document.getElementById('fs-head');
+  const rec   = document.getElementById('fs-rec');
+  const g     = document.getElementById('fs-grid');
+  if(!inner || !g || !g.children.length) return;
+
+  const innerW = inner.clientWidth  - 36;
+  const innerH = inner.clientHeight;
+  const headH  = head.offsetHeight + 14;
+  const recH   = rec.offsetHeight  + 14;
+  const gridH  = Math.floor(innerH - headH - recH - 36);
+  if(gridH < 80) return;
+
+  const gapTotal = 12 * (N - 1);
+  const cardWmax = Math.floor((innerW - gapTotal) / N);
+
+  const numFS = Math.min(44, Math.max(18, Math.round(cardWmax * 0.14)));
+
+  g.querySelectorAll('.tc').forEach(c=>{
+    c.style.flex       = '0 0 '+cardWmax+'px';
+    c.style.width      = cardWmax+'px';
+    c.style.minWidth   = '';
+    c.style.maxWidth   = cardWmax+'px';
+    c.style.height     = gridH+'px';
+    c.style.maxHeight  = gridH+'px';
+    c.style.overflow   = 'hidden';
+    c.style.justifyContent = 'space-between';
+  });
+  g.querySelectorAll('.tcv').forEach(v=>{ v.style.fontSize=numFS+'px'; });
+  g.querySelectorAll('.tcu').forEach(u=>{ u.style.fontSize='11px'; });
+  g.querySelectorAll('.tcn').forEach(n=>{ n.style.fontSize='11px'; });
+  g.querySelectorAll('.tcv-wrap').forEach(w=>{ w.style.padding='3px 2px'; w.style.marginBottom='4px'; });
+  g.querySelectorAll('.tcsvg').forEach(w=>{ w.style.flex='1'; w.style.display='flex'; w.style.alignItems='center'; w.style.justifyContent='center'; });
+  g.querySelectorAll('.tc-aux').forEach(w=>{ w.style.marginTop='4px'; });
+  // SVG 압력계 크기 조정
+  g.querySelectorAll('svg[id^="sv"]').forEach(sv=>{
+    sv.style.width = '100%';
+    sv.style.height = '100%';
+    sv.style.transform = '';
+  });
+  g.style.height = gridH+'px';
+}
+
+function openFS(){
+  const ov=document.getElementById('fs-overlay'),g=document.getElementById('fs-grid');
+  g.innerHTML='';
+  renderThermos(g);
+  g.style.display='flex';
+  g.style.flexDirection='row';
+  g.style.flexWrap='nowrap';
+  g.style.justifyContent='center';
+  g.style.alignItems='flex-start';
+  g.style.gap='12px';
+  g.style.overflowX='auto';
+  g.style.overflowY='hidden';
+  g.style.flex='1';
+  g.style.minHeight='0';
+  ov.classList.add('show');
+  document.body.style.overflow='hidden';
+
+  // 최초 크기 계산
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    calcFSSizes();
+    // ResizeObserver로 이후 브라우저 크기 변화에도 대응
+    if(_fsRO) _fsRO.disconnect();
+    const inner = document.getElementById('fs-inner');
+    _fsRO = new ResizeObserver(()=>{ calcFSSizes(); });
+    _fsRO.observe(inner);
+  }));
+}
+function closeFS(){
+  if(_fsRO){ _fsRO.disconnect(); _fsRO=null; }
+  // ① 먼저 전체화면 요소 제거 (ID 중복 즉시 해소)
+  const fsGrid=document.getElementById('fs-grid');
+  detachDrags(fsGrid);
+  if(fsGrid) fsGrid.innerHTML='';
+  // ② 오버레이 닫기
+  document.getElementById('fs-overlay').classList.remove('show');
+  document.body.style.overflow='';
+  // ③ 메인 게이지 재렌더 (RAF로 DOM 정리 후 실행)
+  requestAnimationFrame(()=>{
+    renderThermos();
+    for(let i=0;i<N;i++) updTUI(i);
+  });
+}
+
+// ════════════ UI 토글 ════════════
+function switchTab(t){
+  // 다중보기 해제
+  if(_multiView){_multiView=false;document.getElementById('dp').classList.remove('multi-view');}
+  const btnMap={'l':'ltab-btn','t':'ttab','g':'gtab-btn'};
+  ['l','t','g'].forEach(x=>{
+    document.getElementById(btnMap[x]).classList.toggle('on',x===t);
+    document.getElementById(x+'-tab').classList.toggle('on',x===t);
+  });
+  // 탭별 액션 버튼 전환
+  document.getElementById('tbar-live-btns').style.display = t==='l'?'flex':'none';
+  document.getElementById('tbar-table-btns').style.display = t==='t'?'flex':'none';
+  document.getElementById('tbar-graph-btns').style.display = t==='g'?'flex':'none';
+  if(t==='g') setTimeout(()=>{if(chart)chart.resize();},50);
+  if(t==='l'){ setTimeout(()=>{if(liveChart)liveChart.resize();flushLiveChart();},50); }
+  if(window.innerWidth<=767) setMobAct(t==='t'?'table':t==='g'?'graph':'live');
+}
+// ── 다중보기 ──
+let _multiView=false;
+let _multiBottomTab='t';
+function toggleMultiView(){
+  if(_multiView)exitMultiView();
+  else enterMultiView();
+}
+function enterMultiView(){
+  _multiView=true;
+  const dp=document.getElementById('dp');
+  dp.classList.add('multi-view');
+  // 탭 상태: l-tab ON, 하단은 마지막 선택 유지
+  document.getElementById('l-tab').classList.add('on');
+  document.getElementById('ltab-btn').classList.add('on');
+  multiSubTab(_multiBottomTab);
+  setTimeout(()=>{
+    if(liveChart)liveChart.resize();flushLiveChart();
+    if(_multiBottomTab==='g'&&chart)chart.resize();
+  },80);
+}
+function exitMultiView(){
+  _multiView=false;
+  document.getElementById('dp').classList.remove('multi-view');
+  // 탭 원복
+  const btnMap={'l':'ltab-btn','t':'ttab','g':'gtab-btn'};
+  ['l','t','g'].forEach(x=>{
+    document.getElementById(btnMap[x]).classList.toggle('on',x===_multiBottomTab);
+    document.getElementById(x+'-tab').classList.toggle('on',x===_multiBottomTab);
+  });
+  if(_multiBottomTab==='g')setTimeout(()=>{if(chart)chart.resize();},50);
+  if(_multiBottomTab==='l')setTimeout(()=>{if(liveChart)liveChart.resize();flushLiveChart();},50);
+}
+function multiSubTab(t){
+  _multiBottomTab=t;
+  ['t','g'].forEach(x=>{
+    document.getElementById(x+'-tab').classList.toggle('on',x===t);
+    document.getElementById('msub-'+x).classList.toggle('on',x===t);
+  });
+  if(t==='g')setTimeout(()=>{if(chart)chart.resize();},50);
+}
+function togDrawer(side){
+  const d=document.getElementById(side==='left'?'ld':'rd');
+  const ar=document.getElementById(side==='left'?'la-arr':'ra-arr');
+  const isMob=window.innerWidth<=767;
+  const col=d.classList.toggle('col');
+  if(side==='left')ar.textContent=col?'▶':'◀';
+  else ar.textContent=col?'◀':'▶';
+  if(isMob){
+    const ov=document.getElementById('mob-overlay');
+    ov.classList.toggle('hide',col);
+  }
+}
+function closeMobOverlay(){
+  ['ld','rd'].forEach(id=>{const d=document.getElementById(id);if(!d.classList.contains('col'))d.classList.add('col');});
+  document.getElementById('la-arr').textContent='▶';
+  document.getElementById('ra-arr').textContent='◀';
+  document.getElementById('mob-overlay').classList.add('hide');
+  // 네비바 활성 상태 복원 (기록표)
+  if(window.innerWidth<=767) setMobAct('table');
+}
+
+// ════════════ 모바일 하단 네비바 ════════════
+let mobActiveTab='table';
+function mobNav(tab){
+  mobActiveTab=tab;
+  // 열려있는 드로어 먼저 닫기
+  const closeDrs=()=>{['ld','rd'].forEach(id=>document.getElementById(id).classList.add('col'));document.getElementById('mob-overlay').classList.add('hide');};
+  if(tab==='guide'){
+    // 왼쪽 드로어 토글
+    const ld=document.getElementById('ld');
+    const rd=document.getElementById('rd');
+    rd.classList.add('col');
+    const wasOpen=!ld.classList.contains('col');
+    ld.classList.toggle('col');
+    document.getElementById('mob-overlay').classList.toggle('hide',wasOpen);
+    setMobAct(wasOpen?'table':'guide');
+    return;
+  }
+  if(tab==='set'){
+    // 오른쪽 드로어 토글
+    const ld=document.getElementById('ld');
+    const rd=document.getElementById('rd');
+    ld.classList.add('col');
+    const wasOpen=!rd.classList.contains('col');
+    rd.classList.toggle('col');
+    document.getElementById('mob-overlay').classList.toggle('hide',wasOpen);
+    setMobAct(wasOpen?'table':'set');
+    return;
+  }
+  if(tab==='cnt'){
+    // 압력계 수 팝업 — 간단히 압력계 영역으로 스크롤
+    closeDrs();
+    const ta=document.getElementById('ta');
+    if(ta)ta.scrollIntoView({behavior:'smooth',block:'start'});
+    setMobAct('cnt');
+    return;
+  }
+  if(tab==='table'){closeDrs();switchTab('t');setMobAct('table');return;}
+  if(tab==='graph'){closeDrs();switchTab('g');setMobAct('graph');return;}
+}
+function setMobAct(tab){
+  ['guide','cnt','table','graph','set','live'].forEach(t=>{
+    const b=document.getElementById('mn-'+t);
+    if(b)b.classList.toggle('act',t===tab);
+  });
+  mobActiveTab=tab;
+}
+// ════════════ 숫자 입력 부호 전환 (± 버튼) ════════════
+function toggleSign(id){
+  const el=document.getElementById(id);if(!el)return;
+  let v=el.value.trim();
+  if(v===''||v==='-'){el.value=v==='-'?'':'-';el.focus();return;}
+  const n=parseFloat(v);
+  if(isNaN(n)){el.focus();return;}
+  el.value=(-n).toString();
+  el.focus();
+}
+// text input에 숫자만 허용하는 필터 (음수, 소수 포함)
+function filterNumericInput(el){
+  el.addEventListener('input',function(){
+    // 허용: 숫자, 마이너스(맨앞만), 소수점(1개만)
+    let v=this.value;
+    // 마이너스는 맨 앞에만
+    let neg=v.startsWith('-');
+    v=v.replace(/[^0-9.]/g,'');
+    // 소수점 1개만
+    const parts=v.split('.');
+    if(parts.length>2) v=parts[0]+'.'+parts.slice(1).join('');
+    this.value=(neg?'-':'')+v;
+  });
+}
+// 초기화: 음수/소수 입력 필드에 필터 적용
+document.addEventListener('DOMContentLoaded',()=>{
+  ['rmin','rmax','ymin','ymax'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) filterNumericInput(el);
+  });
+});
+function toggleDC(h){
+  h.classList.toggle('op');
+  const body=h.nextElementSibling;
+  body.classList.toggle('hide');
+  // 열린 경우 해당 섹션의 콘텐츠가 보이도록 스크롤
+  if(!body.classList.contains('hide')){
+    requestAnimationFrame(()=>{
+      // 섹션 전체 카드(.dc)의 하단이 보이도록 스크롤
+      const dc=h.closest('.dc');
+      if(dc) dc.scrollIntoView({behavior:'smooth',block:'nearest'});
+    });
+  }
+}
+
+function toast(msg,d=2200){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),d);
+}
+
+// ════════════ 모달 ════════════
+function showCM(){document.getElementById('cm').style.display='flex';}
+function syncConnToggle(type){
+  const s=document.getElementById('ct-serial');
+  const b=document.getElementById('ct-ble');
+  if(!s||!b)return;
+  if(type==='serial'){
+    s.style.background='var(--text)';s.style.color='#fff';
+    b.style.background='var(--surface)';b.style.color='var(--sub)';
+  }else{
+    b.style.background='var(--acc)';b.style.color='#fff';
+    s.style.background='var(--surface)';s.style.color='var(--sub)';
+  }
+}
+function toggleConnType(){
+  if(conn){toast('❌ 연결 실패 — 연결 해제 후 방식을 변경해 주세요');return;}
+  cType = (cType==='ble') ? 'serial' : 'ble';
+  if(!cType)cType='serial';
+  syncConnToggle(cType);
+  toast(cType==='serial'?'🔌 유선(USB) 연결 방식으로 변경했어요':'📶 무선(블루투스) 연결 방식으로 변경했어요');
+}
+function skipConn(){document.getElementById('cm').style.display='none';cType=null;toast('✅ 수동 모드로 체험할 수 있어요!');}
+function selConn(type){
+  cType=type;
+  syncConnToggle(type);
+  document.getElementById('cm').style.display='none';
+  connectDev();
+}
+
+// ════════════ 2단계 모달 (유선/무선선택 → 장치연결) ════════════
+function step1Select(type) {
+  cType = type;
+  syncConnToggle(type);
+  document.getElementById('step1-modal').style.display = 'none';
+  // 2단계 모달 표시
+  const isBle = type === 'ble';
+  document.getElementById('s2-icon').textContent  = isBle ? '📶' : '🔌';
+  document.getElementById('s2-title').textContent = isBle ? '무선 장치 연결' : '유선 장치 연결';
+  document.getElementById('s2-desc').textContent  = isBle
+    ? '블루투스 센서(EZON BLE)를 연결하려면 아래 버튼을 누르세요.'
+    : 'USB 케이블로 장치를 연결한 후 아래 버튼을 누르세요.';
+  document.getElementById('step2-modal').style.display = 'flex';
+}
+function step2Connect() {
+  document.getElementById('step2-modal').style.display = 'none';
+  connectDev();
+}
+function step2Skip() {
+  document.getElementById('step2-modal').style.display = 'none';
+  toast('✅ 나중에 헤더의 🔗 장치 연결 버튼으로 연결할 수 있어요.', 3000);
+}
+function openConnModal() {
+  if (conn) { discDev(); return; }
+  document.getElementById('step1-modal').style.display = 'flex';
+}
+function showWelcomeModal() {
+  document.getElementById('step1-modal').style.display = 'flex';
+}
+
+// ════════════ BLE 장치 카드 관리 (V1 통합대시보드 동일) ════════════
+const SENSOR_NAME_BY_ID = Object.fromEntries(BLE_S.map(s => [String(s.id), s.n]));
+let deviceAliasMap = (() => { try { return JSON.parse(localStorage.getItem(DEVICE_ALIAS_STORAGE_KEY) || '{}') || {}; } catch(_) { return {}; } })();
+
+function renderDeviceCards(devices) {
+  const container = document.getElementById('device-card-list');
+  if (!container) return;
+  const expanded = new Set(
+    Array.from(container.querySelectorAll('.dev-card[data-expanded="true"]')).map(c => c.dataset.devId)
+  );
+  container.innerHTML = '';
+  if (!devices || !devices.length) {
+    container.innerHTML = '<p style="font-size:12px;text-align:center;color:var(--muted);padding:12px 0">연결된 보드가 없습니다.<br>장치 연결 버튼을 눌러 시작하세요.</p>';
+    return;
+  }
+  devices.forEach((dev, idx) => container.appendChild(buildDevCard(dev, idx, expanded.has(dev.id))));
+  // 뱃지
+  const badge = document.getElementById('board-count-badge');
+  if (badge) badge.textContent = devices.length > 0 ? `(${devices.length})` : '';
+  // 버튼 활성화
+  const addBtn = document.getElementById('btn-add-dev');
+  const disBtn = document.getElementById('btn-disc-all');
+  const refBtn = document.getElementById('btn-refresh-dev');
+  if (addBtn) addBtn.disabled = !conn;
+  if (disBtn) disBtn.disabled = !conn;
+  if (refBtn) refBtn.disabled = !conn;
+}
+
+function buildDevCard(dev, idx, isExpanded) {
+  const nm = deviceAliasMap[stableDeviceKey(dev)] || deviceAliasMap[dev.id] || dev.deviceName || dev.label || dev.bluetoothName || `Device-${idx+1}`;
+  // V1 통합: 저장된 센서 설정이 있으면 우선 사용
+  const saved = getDeviceSensorSetting(dev);
+  const sensorNm = SENSOR_NAME_BY_ID[String(saved?.sensorId ?? dev.sensorId)] || `S${dev.sensorId ?? '?'}`;
+  const ivMs = saved?.intervalMs ?? dev.intervalMs ?? 1000;
+  const macStr = dev.macTail || (dev.id || '').slice(-8) || '-';
+  const curSId = saved?.sensorId ?? dev.sensorId ?? 23;
+  const sensorOpts = BLE_S.map(s =>
+    `<option value="${s.id}"${s.id === curSId ? ' selected' : ''}>${s.id} - ${s.n}</option>`
+  ).join('');
+
+  const card = document.createElement('div');
+  card.className = 'dev-card';
+  card.dataset.devId = dev.id;
+  if (isExpanded) card.dataset.expanded = 'true';
+  card.style.cssText = 'border:1.5px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)';
+
+  card.innerHTML = `
+    <button class="card-tog" type="button" style="width:100%;display:flex;align-items:center;gap:7px;padding:9px 11px;background:transparent;border:none;cursor:pointer;text-align:left">
+      <span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:var(--acc);color:#fff;text-align:center;line-height:18px;font-size:10px;font-weight:900;flex-shrink:0">${idx+1}</span>
+      <span style="flex:1;font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${getSensorEmoji(curSId)} ${nm} · ${sensorNm} · ${ivMs}ms</span>
+      <span class="card-chev" style="font-size:10px;color:var(--sub);transition:transform .2s${isExpanded?' ;transform:rotate(180deg)':''}">▼</span>
+    </button>
+    <div class="card-bdy" style="${isExpanded?'':'display:none;'}border-top:1px solid var(--border);padding:10px 12px">
+      <div style="font-size:11px;color:var(--sub);margin-bottom:8px;line-height:1.6">
+        <div>MAC: <b style="font-family:monospace">${macStr}</b></div>
+      </div>
+      <div class="sr"><span class="sl">센서 이름</span>
+        <input type="text" class="si inp-alias" value="${nm}" placeholder="장치 이름을 입력하세요" maxlength="20"></div>
+      <div class="sr"><span class="sl">연결 센서</span>
+        <select class="si inp-sensor" style="width:100%">${sensorOpts}</select></div>
+      <div class="sr"><span class="sl">수집 주기 (ms)</span>
+        <div style="display:flex;gap:5px;align-items:center">
+          <input type="number" class="si inp-iv" min="0" value="${ivMs}" style="flex:1">
+          <button class="sb inp-add" data-add="1000" style="padding:4px 7px;font-size:11px">+1s</button>
+          <button class="sb inp-add" data-add="60000" style="padding:4px 7px;font-size:11px">+1m</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border);margin-top:4px">
+        <button class="btn-cancel" style="font-size:12px;color:var(--sub);background:none;border:none;cursor:pointer">취소 ↩</button>
+        <button class="btn-apply" style="font-size:12px;font-weight:700;padding:6px 14px;border-radius:9px;border:1.5px solid var(--acc);color:var(--acc);background:var(--acc-s);cursor:pointer">적용 ✓</button>
+      </div>
+    </div>`;
+
+  // 아코디언
+  card.querySelector('.card-tog').addEventListener('click', () => {
+    const bdy = card.querySelector('.card-bdy');
+    const chev = card.querySelector('.card-chev');
+    if (card.dataset.expanded === 'true') {
+      bdy.style.display = 'none'; chev.style.transform = ''; delete card.dataset.expanded;
+    } else {
+      bdy.style.display = 'block'; chev.style.transform = 'rotate(180deg)'; card.dataset.expanded = 'true';
+    }
+  });
+  // +1s, +1m
+  card.querySelectorAll('.inp-add').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inp = card.querySelector('.inp-iv');
+      inp.value = Math.max(0, (Number(inp.value)||0) + Number(btn.dataset.add));
+    });
+  });
+  // 취소
+  card.querySelector('.btn-cancel').addEventListener('click', () => {
+    card.querySelector('.inp-sensor').value = String(curSId);
+    card.querySelector('.inp-iv').value = String(ivMs);
+    card.querySelector('.inp-alias').value = nm;
+  });
+  // 적용 (V1 통합: localStorage에 설정 영속화)
+  card.querySelector('.btn-apply').addEventListener('click', async () => {
+    if (!hub || !conn) return;
+    const applyBtn = card.querySelector('.btn-apply');
+    const newSId = Number(card.querySelector('.inp-sensor').value);
+    let newIv  = Number(card.querySelector('.inp-iv').value);
+    // 센서 이름 저장
+    const newAlias = (card.querySelector('.inp-alias').value || '').trim();
+    const dk = stableDeviceKey(dev);
+    if (newAlias) {
+      deviceAliasMap[dk] = newAlias;
+      if(dev.id) deviceAliasMap[dev.id] = newAlias;
+    } else {
+      delete deviceAliasMap[dk];
+      if(dev.id) delete deviceAliasMap[dev.id];
+    }
+    persistDeviceAliasMap();
+    // BLE 하드웨어 이름도 변경 (SDK 지원 시)
+    if (newAlias && newAlias !== nm && typeof hub.setDeviceName === 'function') {
+      try { await hub.setDeviceName(dev.id, newAlias); } catch(e) { console.warn('[BLE] setDeviceName 실패:', e); }
+    }
+    // 센서 ID 또는 주기가 실제로 변경되었는지 확인
+    const sensorChanged = (newSId !== curSId || newIv !== ivMs);
+    // 최소 인터벌 검증
+    const minMs = getMinInterval(newSId);
+    if (newIv > 0 && newIv < minMs) {
+      newIv = minMs;
+      card.querySelector('.inp-iv').value = minMs;
+      toast(`⚠️ 이 센서의 최소 주기는 ${minMs}ms 입니다`);
+    }
+    applyBtn.textContent = '적용 중...'; applyBtn.disabled = true;
+    try {
+      if (sensorChanged) {
+        // 센서/주기 변경 시에만 하드웨어 명령 전송
+        if (typeof hub.setSensor === 'function') await hub.setSensor(dev.id, newSId, newIv);
+        setDeviceSensorSetting(dev, newSId, newIv);
+        persistSensorSetting(newSId, newIv);
+        lastSch='';
+        // 수신 중이었을 때만 데이터 스트림 재시작
+        if (streaming) {
+          await dl(300);
+          if(typeof hub.startAll==='function') await hub.startAll();
+          if(!rlActive) ensureBLE();
+        }
+      }
+      // 이름/센서 변경 모두: 카드 목록 + 채널 목록 + 게이지 라벨 갱신
+      await refreshDevList();
+      rebuildLiveChFromDevices();
+      renderThermos();
+      toast('✅ 설정 적용! (저장됨)');
+    } catch(e) {
+      console.error('[BLE] 카드 적용 실패:', e);
+      applyBtn.textContent = '적용 실패 ✗';
+      setTimeout(() => { applyBtn.textContent = '적용 ✓'; applyBtn.disabled = false; }, 2000);
+      return;
+    }
+    applyBtn.textContent = '적용 ✓'; applyBtn.disabled = false;
+  });
+  return card;
+}
+
+async function refreshDevList() {
+  if (!hub || typeof hub.getDevices !== 'function') return;
+  const devs = hub.getDevices();
+  renderDeviceCards(devs);
+  // schi 업데이트
+  const el = document.getElementById('schi');
+  if (el) el.textContent = devs.length > 0 ? `${devs.length}개 장치 연결됨` : '연결된 장치 없음';
+}
+
+// 저장된 장치 별칭을 BLE 하드웨어에 복원 (연결 안정화 후 1회만 호출)
+async function restoreDeviceNames() {
+  if (!hub || typeof hub.getDevices !== 'function' || typeof hub.setDeviceName !== 'function') return;
+  const devs = hub.getDevices();
+  for (const d of devs) {
+    const saved = deviceAliasMap[d.id] || deviceAliasMap[stableDeviceKey(d)];
+    if (saved && saved !== d.label && saved !== d.deviceName) {
+      try { await hub.setDeviceName(d.id, saved); } catch(_) {}
+    }
+  }
+}
+
+async function addBLEDevice() {
+  if (!conn || !hub) { toast('❌ 연결 실패 — 먼저 무선 연결을 해 주세요'); return; }
+  // 수신 중이면 추가 불가 — 먼저 수신 중지 안내
+  if (streaming) {
+    toast('⚠️ 데이터 수신 중에는 센서를 추가할 수 없어요.\n⏹ 수신 중지 후 다시 시도해 주세요.', 4000);
+    return;
+  }
+  const addBtn = document.getElementById('btn-add-dev');
+  addBtn.disabled = true; addBtn.textContent = '⏳ 준비 중...';
+  try {
+    const method = typeof hub.connectMore === 'function' ? 'connectMore'
+                 : typeof hub.addDevice   === 'function' ? 'addDevice' : null;
+    if (!method) { toast('❌ 연결 실패 — 장치 추가를 지원하지 않는 SDK 버전이에요'); return; }
+
+    // ① connectMore — 리더 루프는 유지한 채 장치만 추가 (리더 파괴 금지)
+    addBtn.textContent = '⏳ 검색 중...';
+    const beforeIds = new Set((typeof hub.getDevices === 'function' ? hub.getDevices() : []).map(d => d.id));
+    let ok = false;
+    for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+      try {
+        if (attempt > 0) { addBtn.textContent = `⏳ 재시도 ${attempt+1}/3...`; await dl(600 + attempt * 400); }
+        await hub[method]();
+        ok = true;
+      } catch (e) {
+        const isCancel = ['NotFoundError','AbortError'].includes(e?.name);
+        if (isCancel) throw e;
+        console.warn(`[BLE] 추가 연결 ${attempt+1}차 실패:`, e?.message);
+        if (attempt === 2) throw e;
+      }
+    }
+
+    // ② 신규 장치 센서 설정 + 저장된 이름 복원
+    addBtn.textContent = '⏳ 설정 중...';
+    await dl(500);
+    const dvs = typeof hub.getDevices === 'function' ? hub.getDevices() : [];
+    const newDev = dvs.find(d => !beforeIds.has(d.id));
+    if (newDev && typeof hub.setSensor === 'function') {
+      const cfg = getSCfg();
+      const saved = getDeviceSensorSetting(newDev);
+      const applyCfg = saved || cfg;
+      try { await hub.setSensor(newDev.id, applyCfg.sensorId, applyCfg.intervalMs); } catch(_) {}
+    }
+    // 신규 장치에 저장된 별칭 복원
+    if (newDev && typeof hub.setDeviceName === 'function') {
+      const savedName = deviceAliasMap[newDev.id] || deviceAliasMap[stableDeviceKey(newDev)];
+      if (savedName && savedName !== newDev.label && savedName !== newDev.deviceName) {
+        try { await hub.setDeviceName(newDev.id, savedName); } catch(_) {}
+      }
+    }
+
+    // ③ 장치 목록 갱신 + 스키마 리셋
+    await refreshDevList();
+    lastSch='';
+    rebuildLiveChFromDevices();
+    updStreamBtn();
+    toast('✅ 새 장치를 추가했어요! ▶ 수신 시작을 눌러주세요.');
+  } catch(e) {
+    const isCancel = ['NotFoundError','AbortError'].includes(e?.name);
+    if (!isCancel) {
+      const hint = e?.name === 'NetworkError' || String(e?.message||'').includes('GATT')
+        ? '무선보드 리셋 버튼을 눌러 재시작 후 다시 시도해 주세요.'
+        : (e?.message || '알 수 없는 오류');
+      toast(`❌ 연결 실패 — ${hint}`, 5000);
+    }
+  } finally {
+    const btn = document.getElementById('btn-add-dev');
+    if (btn) { btn.textContent = '➕ 무선 보드 추가'; btn.disabled = !conn; }
+  }
+}
+
+async function discAllDevices() {
+  if (!conn) { toast('❌ 연결 실패 — 연결된 장치가 없어요'); return; }
+  discDev();
+}
+
+// ════════ 수신 시작/중지 제어 ════════
+function updStreamBtn(){
+  const btn=document.getElementById('stream-btn');if(!btn)return;
+  if(!conn||cType!=='ble'){btn.style.display='none';btn.disabled=true;return;}
+  btn.style.display='flex';btn.disabled=false;
+  if(streaming){btn.textContent='⏹ 수신 중지';btn.className='stream-btn stop';}
+  else{btn.textContent='▶ 수신 시작';btn.className='stream-btn';}
+  // 수신 중이면 추가 버튼 비활성화
+  const addBtn=document.getElementById('btn-add-dev');
+  if(addBtn){
+    addBtn.disabled=!conn||streaming;
+    if(streaming){addBtn.style.opacity='0.5';addBtn.title='수신 중지 후 추가할 수 있어요';}
+    else{addBtn.style.opacity='';addBtn.title='';}
+  }
+}
+async function toggleStreaming(){
+  if(streaming) await stopStreaming();
+  else await startStreaming();
+}
+async function startStreaming(){
+  if(!conn||!hub){toast('❌ 먼저 장치를 연결해 주세요');return;}
+  const btn=document.getElementById('stream-btn');
+  btn.disabled=true;btn.textContent='⏳ 시작 중...';
+  try{
+    // 센서 설정 재적용
+    const cfg=getSCfg();
+    const dvs=typeof hub.getDevices==='function'?hub.getDevices():[];
+    if(dvs.length>0&&typeof hub.setSensor==='function'){
+      for(const d of dvs){
+        const saved=getDeviceSensorSetting(d);
+        const applyCfg=saved||cfg;
+        try{await hub.setSensor(d.id,applyCfg.sensorId,applyCfg.intervalMs);}catch(_){}
+      }
+    }else if(typeof hub.setSensorAll==='function'){
+      await hub.setSensorAll(cfg.sensorId,cfg.intervalMs);
+    }
+    await dl(300);
+    lastSch='';  // 스키마 강제 재파싱
+    if(typeof hub.startAll==='function'){await hub.startAll();streaming=true;}
+    // 리더 루프가 이미 살아있으면 그대로 사용, 아니면 새로 시작
+    if(!rlActive){
+      await dl(200);
+      ensureBLE();
+    }
+    toast('▶ 데이터 수신을 시작합니다');
+  }catch(e){
+    console.error('[BLE] startStreaming 실패:',e);
+    toast('❌ 수신 시작 실패 — '+(e?.message||'알 수 없는 오류'));
+  }finally{updStreamBtn();}
+}
+async function stopStreaming(){
+  if(!hub)return;
+  const btn=document.getElementById('stream-btn');
+  btn.disabled=true;btn.textContent='⏳ 중지 중...';
+  try{
+    try{await hub.stopAll();}catch(_){}
+    streaming=false;
+    // 리더 루프는 유지 — 스트림을 닫지 않아야 재시작 가능
+    toast('⏹ 데이터 수신을 중지했습니다');
+  }catch(e){console.warn('[BLE] stopStreaming:',e);}
+  finally{updStreamBtn();}
+}
+
+function setConnUI(){
+  document.getElementById('cs').textContent=cType==='ble'?'📶 무선':'🔌 유선';
+  document.getElementById('cs').className='ok';
+  document.getElementById('bc').textContent='🔴 해제';
+  document.getElementById('ldot').classList.add('on');
+  updStreamBtn();
+  // 연결 방식에 따라 설정 패널 자동 열기/닫기
+  if(cType==='serial'){
+    // 유선: 무선보드 설정·센서표시 닫고, 측정 설정만 열기
+    closeAccordion('dc-board');
+    closeAccordion('dc-sensor-display');
+    openAccordion('dc-thermo');
+  }else{
+    // 무선: 보드 설정·센서표시 열기
+    openAccordion('dc-board');
+    openAccordion('dc-sensor-display');
+  }
+  // 첫 연결 시 오른쪽 설정 드로어 자동 열기 (모바일 제외)
+  if(window.innerWidth > 767){
+    const rd=document.getElementById('rd');
+    if(rd.classList.contains('col')){
+      rd.classList.remove('col');
+      const raArr=document.getElementById('ra-arr');
+      if(raArr) raArr.textContent='◀';
+    }
+  }
+  // 장치 목록 갱신
+  setTimeout(refreshDevList, 800);
+  setTimeout(refreshDevList, 2000);
+  toast('✅ 압력 센서 연결 완료! ▶ 수신 시작을 눌러주세요.',3000);
+}
+function openAccordion(dcId){
+  const dc=document.getElementById(dcId);if(!dc)return;
+  const h=dc.querySelector('.dch');
+  const b=dc.querySelector('.dcb');
+  if(h&&b&&b.classList.contains('hide')){h.classList.add('op');b.classList.remove('hide');}
+}
+function closeAccordion(dcId){
+  const dc=document.getElementById(dcId);if(!dc)return;
+  const h=dc.querySelector('.dch');
+  const b=dc.querySelector('.dcb');
+  if(h&&b&&!b.classList.contains('hide')){h.classList.remove('op');b.classList.add('hide');}
+}
+function setDiscUI(){
+  document.getElementById('cs').textContent='연결 안 됨';document.getElementById('cs').className='';
+  document.getElementById('bc').textContent='🔗 장치 연결';document.getElementById('bc').disabled=false;
+  document.getElementById('ldot').classList.remove('on');
+  document.getElementById('schi').textContent='연결 대기 중...';
+  updStreamBtn();
+  // 이모지/헤더 초기화
+  const el=document.getElementById('thermo-header-label');if(el)el.textContent='💉 압력계';
+  const hLogo=document.getElementById('h-logo-emoji');if(hLogo)hLogo.textContent='💉';
+  // 장치 카드 목록 초기화
+  renderDeviceCards([]);
+  // 장치 관리 버튼 비활성화
+  const addBtn=document.getElementById('btn-add-dev');
+  const disBtn=document.getElementById('btn-disc-all');
+  const refBtn=document.getElementById('btn-refresh-dev');
+  if(addBtn)addBtn.disabled=true;
+  if(disBtn)disBtn.disabled=true;
+  if(refBtn)refBtn.disabled=true;
+  const badge=document.getElementById('board-count-badge');
+  if(badge)badge.textContent='';
+}
+// ════════ BLE 연결 안정화 (통합대시보드 V22 동일 로직) ════════
+
+// forceDisconnectAllBluetoothDevices: GATT 잔류 해제 + 옵션 forget
+async function forceDis({ forget = false } = {}) {
+  try {
+    if (!navigator.bluetooth || typeof navigator.bluetooth.getDevices !== 'function') {
+      console.log('[BLE] getDevices API 미지원 — 건너뜀');
+      return;
+    }
+    const devices = await navigator.bluetooth.getDevices();
+    let disconnected = 0;
+    for (const device of devices) {
+      if (device.gatt?.connected) {
+        try { device.gatt.disconnect(); disconnected++; console.log('[BLE] GATT 강제 해제:', device.name || device.id); }
+        catch (e) { console.warn('[BLE] GATT 해제 실패:', device.name, e); }
+      }
+      if (forget && typeof device.forget === 'function') {
+        try { await device.forget(); console.log('[BLE] 페어링 권한 제거:', device.name || device.id); }
+        catch (e) { console.warn('[BLE] forget 실패:', device.name, e); }
+      }
+    }
+    if (disconnected > 0) {
+      console.log(`[BLE] GATT 강제 해제 완료 (${disconnected}개)`);
+      await dl(400);
+    }
+  } catch (e) { console.warn('[BLE] forceDis 오류:', e); }
+}
+
+// V1 통합: schedulePostConnectRefresh — 연결 후 4s, 6s에 장치 목록 + 카드 실제 갱신
+let _postConnTmrs = [];
+function schedulePostConnectRefresh() {
+  _postConnTmrs.forEach(t => clearTimeout(t));
+  _postConnTmrs = [];
+  [4000, 6000].forEach(delay => {
+    _postConnTmrs.push(setTimeout(async () => {
+      if (!conn || discing || isDisconnecting || !hub) return;
+      try {
+        await refreshDevList();
+        rebuildLiveChFromDevices();
+        if (typeof hub.getDevices === 'function') {
+          const dvs = hub.getDevices();
+          const schiEl = document.getElementById('schi');
+          if(schiEl) schiEl.textContent = `장치 ${dvs.length}개 연결됨`;
+        }
+        // 6초 후 1회만 저장된 장치 이름 복원 (연결 안정화 후)
+        if (delay >= 6000) {
+          await restoreDeviceNames();
+          await refreshDevList(); // 이름 반영
+        }
+      } catch (_) {}
+    }, delay));
+  });
+}
+
+async function connectDev() {
+  const btn = document.getElementById('bc');
+  // 이미 연결됨 → 해제
+  if (conn) { discDev(); return; }
+  if (!cType) cType = 'serial';
+  syncConnToggle(cType);
+  btn.disabled = true; btn.textContent = '⏳ 연결 중...';
+  const csEl = document.getElementById('cs');
+  if (csEl) { csEl.textContent = '연결 중...'; csEl.className = 'ing'; }
+
+  try {
+    if (cType === 'serial') {
+      // ── 유선 연결 ──
+      if (!navigator.serial) {
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        toast(isSafari
+          ? '❌ 연결 실패 — Safari는 유선 연결을 지원하지 않아요. Chrome 또는 Edge를 사용해 주세요.'
+          : '❌ 연결 실패 — 유선 미지원 환경이에요. Chrome/Edge + HTTPS가 필요해요.', 5000);
+        return;
+      }
+      sport = await navigator.serial.requestPort();
+      await sport.open({ baudRate: 115200 });
+      conn = true;
+      setConnUI();
+      readSerial();
+      return;
+    }
+
+    // ── BLE 무선 연결 ──
+    // SDK 로드 대기 (최대 3초)
+    if (!navigator.ezonBle) {
+      let waited = 0;
+      while (!navigator.ezonBle && waited < 3000) { await dl(200); waited += 200; }
+    }
+    if (!navigator.ezonBle) {
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      toast(isSafari
+        ? '❌ 연결 실패 — Safari는 블루투스를 지원하지 않아요. iPhone/iPad는 Bluefy 앱, Mac은 Chrome을 사용해 주세요.'
+        : '❌ 연결 실패 — Web Bluetooth 미지원 환경이에요. Chrome + HTTPS 환경에서 사용해 주세요.', 5000);
+      return;
+    }
+    if (discing || isDisconnecting) { toast('❌ 연결 실패 — 해제 처리 중입니다. 잠시 후 다시 시도해 주세요.'); return; }
+
+    // [V4.5 Fix] 연결 전 GATT 정리 — 2사이클+ 누적 시 forget:true로 캐시 완전 제거
+    await forceDis({ forget: cyc >= 2 });
+    await dl(cyc >= 2 ? 1200 : 800);
+
+    // requestPort는 사용자 제스처 직후 호출
+    hub = await navigator.ezonBle.requestPort({ filters: BLE_F, optionalServices: [EZON_SVC] });
+
+    // hubPort.open() GATT 오류 시 최대 3회 재시도
+    const isGE = e => {
+      const name = e?.name || '';
+      const msg  = String(e?.message || '');
+      return name === 'NetworkError' || name === 'InvalidStateError'
+        || msg.includes('GATT') || msg.includes('connect') || msg.includes('operation');
+    };
+    let openOk = false;
+    const retryDelays = [1500, 2500, 3500];
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try { await hub.open(); openOk = true; break; }
+      catch (e) {
+        if (isGE(e) && attempt < 3) {
+          btn.textContent = `⏳ 재시도 중 (${attempt}/3)...`;
+          try { await hub.close(); } catch (_) {}
+          await forceDis({ forget: true });
+          await dl(retryDelays[attempt - 1]);
+        } else { throw e; }
+      }
+    }
+    if (!openOk) throw new Error('GATT 연결 실패 (3회 시도 후)');
+
+    conn = true; streaming = false;
+    setConnUI();
+    console.log('[BLE] BLE 허브 연결 성공');
+
+    // 후속 설정: 센서 설정만 수행 (수신은 사용자가 "수신 시작" 버튼으로 제어)
+    try {
+      await dl(700);
+      await refreshDevList();
+      const cfg = getSCfg();
+      if (cfg) {
+        const dvs = typeof hub.getDevices === 'function' ? hub.getDevices() : [];
+        if (dvs.length > 0 && typeof hub.setSensor === 'function') {
+          for (const d of dvs) {
+            const saved = getDeviceSensorSetting(d);
+            const applyCfg = saved || cfg;
+            try { await hub.setSensor(d.id, applyCfg.sensorId, applyCfg.intervalMs); }
+            catch (e) { console.warn(`[BLE] 장치 ${d.id} 센서 설정 실패:`, e); }
+          }
+        } else if (typeof hub.setSensorAll === 'function') {
+          await hub.setSensorAll(cfg.sensorId, cfg.intervalMs);
+        }
+      }
+      schedulePostConnectRefresh();
+      updStreamBtn();
+    } catch (postErr) {
+      console.warn('[BLE] 후속 설정 오류 (연결 유지):', postErr);
+    }
+
+  } catch (err) {
+    console.error('[BLE] 연결 실패:', err);
+    // [V1 통합] 연결 실패 시 GATT 잔류 캐시 철저 정리
+    // 1) hubPort(hub) 닫기
+    if (hub) { try { await hub.stopAll(); } catch (_) {} try { await hub.close(); } catch (_) {} hub = null; }
+    // 2) readLoop이 시작됐을 수 있으므로 정리
+    if (rd)  { try { await rd.cancel();  } catch (_) {} rd = null; }
+    rlActive = false;
+    // [V1 동일] Chrome GATT 스택에 남은 연결 해제 (페어링 권한 유지) — 항상 실행
+    await forceDis({ forget: false }); await dl(1000);
+    conn = false; streaming = false;
+    setDiscUI();
+    const isCancel = ['NotFoundError', 'AbortError'].includes(err?.name);
+    if (!isCancel) {
+      const hint = err?.name === 'SecurityError'
+        ? '브라우저 보안 정책으로 차단됐어요. 버튼을 다시 한 번 눌러주세요.'
+        : '무선보드 리셋 버튼을 눌러 재시작 후 다시 연결해 보세요.';
+      toast(`❌ 연결 실패 — ${hint}`, 5000);
+    }
+  } finally {
+    // [V1 동일] 연결 실패 시 항상 버튼 복원
+    btn.disabled = false;
+    if (!conn) {
+      btn.textContent = '🔗 장치 연결';
+    }
+  }
+}
+
+async function discDev() {
+  if (discing) { console.warn('[BLE] 이미 해제 진행 중'); return; }
+  discing = true; isDisconnecting = true; streaming = false;
+  cyc++;
+  console.log(`[BLE] 연결 해제 시작 (사이클 #${cyc})`);
+
+  // V1 통합: 자동 기록 중이면 즉시 정지
+  if (isAuto) {
+    clearInterval(autoTmr); autoTmr = null; isAuto = false;
+    document.getElementById('arb').textContent = '▶ 시작';
+    document.getElementById('arb').classList.add('on');
+    document.getElementById('ars').textContent = '대기 중';
+  }
+
+  // 1) reader 취소
+  if (rd) { try { await rd.cancel(); } catch (_) {} }
+  // 2) readLoop 종료 대기
+  for (let i = 0; i < 30 && rlActive; i++) await dl(50);
+  rlActive = false; rd = null;
+
+  // 3) hubPort 정지 및 닫기
+  if (hub) {
+    try { await hub.stopAll(); } catch (_) {}
+    try { await hub.close(); } catch (_) {}
+    hub = null;
+  }
+  if (sport) {
+    try { await sport.close(); } catch (_) {}
+    sport = null;
+  }
+  // [V4.5 Fix] GATT 잔여 연결 강제 해제 — hub 유무와 무관하게 항상 실행
+  // 2회차+부터 forget:true → Chrome GATT 캐시 누적 조기 방지
+  await forceDis({ forget: cyc >= 2 });
+
+  // 4) 상태 초기화 (V1 통합: 더 포괄적 리셋)
+  conn = false; sInit = false; sCnt = 0; lbuf = []; lastSch = '';
+  sIdxs = []; sFCols = []; sPrimSids = []; auxIdxs = []; auxMap = [];
+  clearAux(); liveChList=[]; renderLiveChUI();
+  liveBuf = [];
+  const badge = document.getElementById('live-badge');
+  if (badge) badge.style.display = 'none';
+
+  // V1 통합: 스키마 정보 초기화
+  const schEl = document.getElementById('schi');
+  if (schEl) schEl.textContent = '연결 대기 중...';
+
+  // V1 통합: 장치 카드 즉시 초기화 + 버튼 비활성화
+  renderDeviceCards([]);
+  const addBtn=document.getElementById('btn-add-dev');
+  const disBtn=document.getElementById('btn-disc-all');
+  const refBtn=document.getElementById('btn-refresh-dev');
+  if(addBtn)addBtn.disabled=true;
+  if(disBtn)disBtn.disabled=true;
+  if(refBtn)refBtn.disabled=true;
+  const bcBadge=document.getElementById('board-count-badge');
+  if(bcBadge)bcBadge.textContent='';
+
+  // 5) UI: BT 안정화 카운트다운 (V1 통합: 동일 로직)
+  const btn = document.getElementById('bc');
+  const csEl = document.getElementById('cs');
+  btn.disabled = true;
+  if (csEl) { csEl.textContent = 'BT 안정화 중'; csEl.className = 'ing'; }
+  for (let s = 3; s >= 1; s--) {
+    btn.textContent = `⏳ ${s}초 후 연결 가능`;
+    await dl(1000);
+  }
+
+  // [V4.5 Fix] 카운트다운 완료 후 GATT 캐시 정리 — 매 해제마다 실행
+  // cyc를 리셋하지 않음 → 누적 사이클 추적으로 forget:true 조건 유지
+  await forceDis({ forget: cyc >= 2 });
+  await dl(400);
+  console.log(`[BLE] GATT 캐시 정리 완료 (누적 사이클: ${cyc})`);
+
+  discing = false; isDisconnecting = false;
+  setDiscUI();
+  toast('🔌 연결 해제');
+  console.log(`[BLE] 재연결 준비 완료 (사이클 ${cyc})`);
+}
+const dl=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function readSerial(){
+  const dec=new TextDecoderStream();sport.readable.pipeTo(dec.writable).catch(()=>{});
+  const lr=dec.readable.getReader();rd=lr;rlActive=true;let buf='';
+  try{while(true){const{value,done}=await lr.read();if(done)break;buf+=value;let nl;while((nl=buf.indexOf('\n'))!==-1){const ln=buf.slice(0,nl).trim();buf=buf.slice(nl+1);if(ln)_procSerialLine(ln);}}}
+  catch(_){}finally{try{lr.releaseLock();}catch(_){}if(rd===lr)rd=null;rlActive=false;}
+}
+// ── 유선 전용 라인 처리: 끝 쉼표·빈 슬롯 제거 + liveChList 자동 구축 ──
+function _procSerialLine(ln){
+  // 스키마 라인은 BLE와 동일하게 처리
+  if(ln.startsWith('@schema,')||ln.startsWith('SCHEMA')){
+    const prefix=ln.startsWith('@schema,')?'@schema,':'SCHEMA,';
+    const parts=ln.slice(prefix.length).split(',');const ver=parts[0]||'0';const ac=parts.slice(1);
+    const nk=`${ver}|${ac.join('|')}`;
+    if(nk!==lastSch){
+      lastSch=nk;
+      const f=ac.reduce((acc,col,i)=>{
+        const m=col.match(/^(.*):S(\d+):CH(\d+)$/i);if(!m)return acc;
+        const sid=parseInt(m[2]),ch=parseInt(m[3]),dk=m[1];
+        if(ch===1){acc.c.push(col);acc.i.push(i+1);acc.dk.push(dk);acc.sid.push(sid);}
+        else{acc.ax.push({col,idx:i+1,dk,sid,ch});}
+        return acc;
+      },{c:[],i:[],dk:[],sid:[],ax:[]});
+      sIdxs=f.i;sFCols=f.c;sPrimSids=f.sid;
+      sInit=false;sCnt=0;
+      auxMap=f.ax.map(a=>{const ti=f.dk.indexOf(a.dk);return{...a,thermoIdx:ti>=0?ti:-1,label:getAuxLabel(a.sid,a.ch)};});
+      auxIdxs=auxMap.map(a=>a.idx);
+      clearAux();
+      auxMap.forEach((a,si)=>{if(a.thermoIdx>=0){if(!auxData[a.thermoIdx])auxData[a.thermoIdx]=[];auxData[a.thermoIdx][si]={label:a.label,value:NaN};}});
+      renderTH();renderTB();rebuildLiveChList();
+    }
+    return;
+  }
+  // ★ 핵심 수정: 끝 쉼표 제거 → 빈 문자열("")이 Number("")=0 으로 변환되어
+  //   실제 센서 1개인데 4개로 인식되는 버그 방지
+  const cleaned = ln.replace(/,+$/, '');           // "25.3,,," → "25.3"
+  if(!cleaned) return;
+  // 유선은 시퀀스 번호 없이 센서값만 들어옴 → 그대로 procLine 호출
+  // liveChList가 비어있으면 유선용 기본 채널 목록 자동 생성
+  const valCount = cleaned.split(',').filter(s=>s.trim()!=='').length;
+  if(cType==='serial' && !liveChList.length && valCount > 0){
+    _buildSerialLiveCh(Math.min(valCount, 4));
+  }
+  procLine(cleaned);
+}
+// ── 유선 전용: 기본 liveChList 구축 (실시간 그래프 표시용) ──
+function _buildSerialLiveCh(cnt){
+  const oldVis={};liveChList.forEach(c=>{oldVis[c.key]=c.vis;});
+  liveChList=[];
+  for(let i=0;i<cnt;i++){
+    const k='t:'+i;
+    liveChList.push({
+      key:k, label:TNAMES[i]||('센서'+(i+1)), color:PAL[i%PAL.length],
+      vis:oldVis[k]!==undefined?oldVis[k]:true,
+      type:'temp', thermoIdx:i, slotIdx:-1,
+      deviceKey:'serial:'+i, deviceName:TNAMES[i]||('센서'+(i+1)),
+      devIdx:i+1, sensorId:0, sensorName:'Serial', chNum:'1'
+    });
+  }
+  renderLiveChUI();
+}
+// V0 동일: hub.readable.getReader() 직접 읽기 (TextDecoderStream 제거)
+function ensureBLE(){if(rlActive||!hub||isDisconnecting)return;void startBLELoop();}
+async function startBLELoop(){
+  if(!hub||rlActive||isDisconnecting)return;rlActive=true;
+  const localReader=hub.readable.getReader();rd=localReader;let buf='';
+  try{
+    while(true){
+      if(!hub||!conn||isDisconnecting)break;
+      let res;try{res=await localReader.read();}catch(_){break;}
+      if(res.done)break;if(!res.value)continue;
+      buf+=String(res.value);const lines=buf.split('\n');buf=lines.pop()||'';
+      for(const raw of lines){
+        const ln=raw.trim();if(!ln)continue;
+        // V0/V1 통합: SCHEMA 및 @schema 두 형식 모두 지원
+        if(ln.startsWith('@schema,')||ln.startsWith('SCHEMA')){
+          const prefix=ln.startsWith('@schema,')?'@schema,':'SCHEMA,';
+          const parts=ln.slice(prefix.length).split(',');const ver=parts[0]||'0';const ac=parts.slice(1);
+          const nk=`${ver}|${ac.join('|')}`;
+          if(nk!==lastSch){
+            lastSch=nk;
+            const dvs=typeof hub.getDevices==='function'?hub.getDevices():[];
+            // devIdx 매핑 (hub.getDevices 순서 → 1-based index)
+            const devIdxMap={};
+            dvs.forEach((d,di)=>{
+              const keys=[d.macTail,d.id,d.label,d.deviceName].filter(Boolean);
+              keys.forEach(k=>{devIdxMap[k]=di+1;});
+            });
+            const dm={};for(const d of dvs){
+              const si=d.sensorId!=null?String(d.sensorId):null;
+              if(!si)continue;
+              if(d.macTail)dm[d.macTail]=si;if(d.label)dm[d.label]=si;
+              if(d.id)dm[d.id]=si;if(d.deviceName)dm[d.deviceName]=si;
+            }
+            // 범용 멀티채널 파싱: CH1→압력계, CH2+→보조 뱃지
+            const f=ac.reduce((acc,col,i)=>{
+              const m=col.match(/^(.*):S(\d+):CH(\d+)$/i);if(!m)return acc;
+              const ex=dm[m[1]];if(ex!==undefined&&ex!==m[2])return acc;
+              const sid=parseInt(m[2]),ch=parseInt(m[3]),dk=m[1];
+              if(ch===1){acc.c.push(col);acc.i.push(i+1);acc.dk.push(dk);acc.sid.push(sid);}
+              else{acc.ax.push({col,idx:i+1,dk,sid,ch});}
+              return acc;
+            },{c:[],i:[],dk:[],sid:[],ax:[]});
+            // devIdx 기준 정렬: 스키마 순서를 hub.getDevices() 순서에 맞춤
+            const devIdxArr=f.dk.map(dk=>devIdxMap[dk]||999);
+            const sortOrder=[...Array(f.c.length).keys()].sort((a,b)=>devIdxArr[a]-devIdxArr[b]);
+            sIdxs=sortOrder.map(j=>f.i[j]);
+            sFCols=sortOrder.map(j=>f.c[j]);
+            sPrimSids=sortOrder.map(j=>f.sid[j]);
+            const sortedDk=sortOrder.map(j=>f.dk[j]);
+            sInit=false;sCnt=0;
+            // 보조 채널 → 압력계 인덱스 매핑 (정렬된 dk 기준) + 라벨 설정
+            auxMap=f.ax.map(a=>{const ti=sortedDk.indexOf(a.dk);return{...a,thermoIdx:ti>=0?ti:-1,label:getAuxLabel(a.sid,a.ch)};});
+            auxIdxs=auxMap.map(a=>a.idx);
+            clearAux();
+            // 보조 채널 슬롯 초기화
+            auxMap.forEach((a,si)=>{if(a.thermoIdx>=0){if(!auxData[a.thermoIdx])auxData[a.thermoIdx]=[];auxData[a.thermoIdx][si]={label:a.label,value:NaN};}});
+            const ss=new Set();f.c.forEach(c=>{const m=c.match(/:S(\d+):CH\d+$/i);if(m)ss.add(m[1]);});f.ax.forEach(a=>ss.add(String(a.sid)));
+            const sm=Array.from(ss).map(id=>(BLE_S.find(s=>String(s.id)===id)||{n:`S${id}`}).n).join(', ');
+            const schiEl=document.getElementById('schi');
+            const totalCh=f.c.length+f.ax.length;
+            if(schiEl)schiEl.textContent=`v${ver} | ${totalCh}개 채널`+(f.ax.length>0?` (보조 ${f.ax.length})`:'')+( sm?` [${sm}]`:'');
+            renderTH();renderTB();rebuildLiveChList();
+            setTimeout(refreshDevList,300);
+          }
+          continue;
+        }
+        const ps=ln.split(',');
+        if(ps.length>=2){
+          const csv=sIdxs.length>0?sIdxs.map(i=>ps[i]??'').join(','):ps.slice(1).join(',');
+          // 보조 채널 데이터 추출 + 라우팅
+          if(auxMap.length>0){
+            auxMap.forEach((a,si)=>{
+              const v=Number(ps[a.idx]??'');
+              if(isFinite(v)&&a.thermoIdx>=0)setAux(a.thermoIdx,si,v);
+            });
+          }
+          procLine(csv);
+        }
+      }
+    }
+  }finally{try{localReader.releaseLock();}catch(_){}if(rd===localReader)rd=null;rlActive=false;}
+}
+// 멀티보드 안전: NaN은 제거하지 않고 인덱스 보존, 유효값만 개별 갱신
+function procLine(csv){
+  if(!csv)return;
+  const vs=csv.split(',').map(Number);
+  if(!vs.some(v=>isFinite(v)))return;
+  if(!sInit||vs.length!==sCnt){
+    sInit=true;sCnt=vs.length;
+    if(vs.length>N && vs.length<=4) setN(vs.length);
+  }
+  const n=Math.min(vs.length,N);
+  for(let i=0;i<n;i++){if(isFinite(vs[i]))setT(i,vs[i]);}
+  if(thermoMode==='auto') autoFitThermoRange();
+  const live=vs.slice(0,n).map((v,i)=>isFinite(v)?v:TVals[i]);
+  pushLiveBuf(live);
+}
+function getMinInterval(sensorId){const s=BLE_S.find(s=>s.id===sensorId);return s?.mi||10;}
+function getSCfg(){
+  const si=parseInt(document.getElementById('bss').value)||12;
+  const iv=parseFloat(document.getElementById('biv').value)||1;
+  const rawMs=Math.round(iv*1000);
+  const minMs=getMinInterval(si);
+  const intervalMs=Math.max(rawMs,minMs);
+  return{sensorId:si,intervalMs};
+}
+async function applySens(){
+  if(!conn||cType!=='ble'||!hub){toast('❌ 연결 실패 — 먼저 장치를 연결해 주세요');return;}
+  const cfg=getSCfg();
+  try{const dvs=typeof hub.getDevices==='function'?hub.getDevices():[];
+    if(dvs.length>0){for(const d of dvs)await hub.setSensor(d.id,cfg.sensorId,cfg.intervalMs);}
+    else if(typeof hub.setSensorAll==='function')await hub.setSensorAll(cfg.sensorId,cfg.intervalMs);
+    toast('✅ 센서 설정 적용!');}catch(e){console.error(e);toast('❌ 센서 설정 실패');}
+}
+
+// ── 장치 추가 (BLE 추가 연결) ──
+async function addDevice() {
+  if (!conn || cType !== 'ble') { toast('❌ 연결 실패 — 먼저 무선 연결을 해 주세요'); return; }
+  if (!hub || typeof hub.addDevice !== 'function') {
+    toast('❌ 연결 실패 — 장치 추가를 지원하지 않는 SDK 버전이에요'); return;
+  }
+  try {
+    const btn = document.getElementById('btn-add-dev');
+    btn.textContent = '⏳ 검색 중...'; btn.disabled = true;
+    await hub.addDevice();
+    await new Promise(r => setTimeout(r, 800));
+    updDevList();
+    toast('✅ 새 장치를 추가했어요!');
+  } catch(e) {
+    console.warn('[BLE] 장치 추가 실패:', e);
+    toast('❌ 연결 실패 — ' + (e?.message || '장치 추가에 실패했어요'));
+  } finally {
+    const btn = document.getElementById('btn-add-dev');
+    if (btn) { btn.textContent = '＋ 장치 추가'; btn.disabled = false; }
+  }
+}
+
+// ── 연결 해제 ──
+async function discAllDevices() {
+  if (!conn) { toast('❌ 연결 실패 — 연결된 장치가 없어요'); return; }
+  discDev();
+}
+
+// ── 연결된 장치 목록 표시 ──
+function updDevList() {
+  const el = document.getElementById('dev-list');
+  if (!el) return;
+  if (!conn || !hub || typeof hub.getDevices !== 'function') { el.innerHTML = ''; return; }
+  const dvs = hub.getDevices();
+  if (!dvs || !dvs.length) { el.innerHTML = '<span style="color:var(--muted)">연결된 장치 없음</span>'; return; }
+  el.innerHTML = dvs.map((d, i) => {
+    const nm = deviceAliasMap[stableDeviceKey(d)]||deviceAliasMap[d.id]||d.deviceName||d.label||d.bluetoothName||`장치 ${i+1}`;
+    return `<div style="display:flex;align-items:center;gap:5px">
+      <span style="color:var(--grn);font-size:10px">●</span>
+      <span style="color:var(--text)">${nm}</span>
+    </div>`;
+  }).join('');
+}
+
+// ════════════ 실시간 라인 그래프 ════════════
+let liveChart = null;
+let liveBuf   = [];      // [{t:'12:34:56', vals:[v0,v1,v2,v3]}, ...]
+let liveWin   = 100;     // 표시할 최근 N개
+let _liveRaf  = null;
+let _liveNeedsUpdate = false;
+
+function initLiveChart(){
+  const ctx = document.getElementById('live-chart').getContext('2d');
+  liveChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: [], datasets: [] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', align: 'end',
+          labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } }
+        }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(79,126,248,.08)' },
+          title: { display: true, text: '시각', font: { size: 12, weight: 'bold' }, color: '#5b6ea8' },
+          ticks: { font: { size: 10 }, color: '#9aabd4', maxTicksLimit: 10, maxRotation: 0 }
+        },
+        y: { min: rMin, max: rMax,
+          grid: { color: 'rgba(79,126,248,.18)' },
+          title: { display: true, text: `압력 (${uLbl()})`, font: { size: 12, weight: 'bold' }, color: '#5b6ea8' },
+          ticks: { font: { size: 11 }, color: '#9aabd4' }
+        }
+      }
+    }
+  });
+}
+
+function pushLiveBuf(vals){
+  // 보조 채널 스냅샷 포함
+  const auxSnap=[];
+  auxData.forEach((items,ti)=>(items||[]).forEach((d,si)=>{
+    auxSnap.push({thermoIdx:ti,slotIdx:si,value:isNaN(d.value)?null:Math.round(d.value*100)/100});
+  }));
+  liveBuf.push({ t: now(), vals: vals.map(v => Math.round(v*10)/10), aux: auxSnap });
+  if(liveBuf.length > LBUF) liveBuf.shift();
+  _liveNeedsUpdate = true;
+  updLiveCurVals(vals);
+  // 실시간 탭이 열려있을 때만 RAF 스케줄
+  if(document.getElementById('l-tab').classList.contains('on')){
+    if(!_liveRaf) _liveRaf = requestAnimationFrame(flushLiveChart);
+  }
+  // 전체화면 실시간 탭이 열려있을 때도 업데이트
+  if(dpFSLiveChart && dpFSCurrentTab === 'l'){
+    _dpFSLiveNeedsUpdate = true;
+    if(!_dpFSLiveRaf) _dpFSLiveRaf = requestAnimationFrame(flushDPFSLive);
+  }
+  // 실시간 탭 뱃지 표시
+  document.getElementById('live-badge').style.display = 'block';
+  document.getElementById('live-ndo').style.display = 'none';
+}
+
+function flushLiveChart(){
+  _liveRaf = null;
+  if(!_liveNeedsUpdate || !liveChart) return;
+  _liveNeedsUpdate = false;
+  const view = liveWin >= liveBuf.length ? liveBuf : liveBuf.slice(-liveWin);
+  const labels = view.map(r => r.t);
+  // liveChList 기반 데이터셋 구축 (표시 채널만)
+  const visCh=liveChList.filter(c=>c.vis);
+  const datasets=visCh.map(ch=>{
+    let data;
+    if(ch.type==='temp'){
+      data=view.map(r=>r.vals[ch.thermoIdx]??null);
+    }else{
+      data=view.map(r=>{
+        const a=(r.aux||[]).find(x=>x.thermoIdx===ch.thermoIdx&&x.slotIdx===ch.slotIdx);
+        return a?a.value:null;
+      });
+    }
+    return{label:ch.label,data,borderColor:ch.color,backgroundColor:ch.color+'22',borderWidth:2,pointRadius:2,pointBackgroundColor:ch.color,tension:0.3,fill:false};
+  });
+  liveChart.data.labels=labels;
+  liveChart.data.datasets=datasets;
+  liveChart.options.scales.y.title.text=`압력 (${uLbl()})`;
+  liveChart.options.scales.y.min=rMin;
+  liveChart.options.scales.y.max=rMax;
+  liveChart.update('none');
+}
+
+function updLiveCurVals(vals){
+  const el = document.getElementById('live-cur-vals');
+  if(!el) return;
+  let html = vals.slice(0,N).map((v,i)=>{
+    const ch=liveChList.find(c=>c.type==='temp'&&c.thermoIdx===i);
+    const lbl=ch?`${ch.devIdx} ${ch.label}`:TNAMES[i];
+    return`<span style="padding:2px 10px;border-radius:14px;font-size:12px;font-weight:900;color:#fff;background:${PAL[i]}">${lbl}: ${(Math.round(v*10)/10).toFixed(1)} ${uLbl()}</span>`;
+  }).join('');
+  html+=auxBadgesHTML(12);
+  el.innerHTML = html;
+}
+
+function setLiveWin(v){
+  liveWin = parseInt(v) || 100;
+  _liveNeedsUpdate = true;
+  // 메인 실시간 슬라이더 동기화
+  const mainSlider = document.getElementById('live-zoom');
+  if(mainSlider && parseInt(mainSlider.value) !== liveWin) { mainSlider.value = liveWin; document.getElementById('live-zoom-val').textContent = liveWin; }
+  // 전체화면 실시간 슬라이더 동기화
+  const fsSlider = document.getElementById('dp-fs-live-zoom');
+  if(fsSlider && parseInt(fsSlider.value) !== liveWin) { fsSlider.value = liveWin; document.getElementById('dp-fs-live-zoom-val').textContent = liveWin; }
+  if(document.getElementById('l-tab').classList.contains('on')) flushLiveChart();
+  if(dpFSLiveChart && dpFSCurrentTab === 'l'){ _dpFSLiveNeedsUpdate = true; flushDPFSLive(); }
+}
+
+function clearLiveBuf(){
+  liveBuf = [];
+  clearAux();
+  if(liveChart){ liveChart.data.labels=[]; liveChart.data.datasets=[]; liveChart.update('none'); }
+  document.getElementById('live-cur-vals').innerHTML = '';
+  document.getElementById('live-ndo').style.display = 'flex';
+  document.getElementById('live-badge').style.display = 'none';
+  toast('🗑 실시간 데이터를 지웠어요');
+}
+
+function dlLiveCSV(){
+  if(!liveBuf.length){toast('💾 저장할 실시간 데이터가 없어요');return;}
+  const u=uLbl();
+  const visCh=liveChList.filter(c=>c.vis);
+  let hd,rows;
+  if(visCh.length){
+    hd=['시각',...visCh.map(c=>c.label+'('+u+')')];
+    rows=[hd.join(',')];
+    liveBuf.forEach(r=>{
+      const row=[r.t];
+      visCh.forEach(ch=>{
+        if(ch.type==='temp') row.push(r.vals[ch.thermoIdx]??'');
+        else{ const a=(r.aux||[]).find(x=>x.thermoIdx===ch.thermoIdx&&x.slotIdx===ch.slotIdx); row.push(a?a.value:''); }
+      });
+      rows.push(row.join(','));
+    });
+  }else{
+    hd=['시각',...Array.from({length:N},(_,i)=>`압력${i+1}(${u})`)];
+    rows=[hd.join(',')];
+    liveBuf.forEach(r=>{
+      const row=[r.t,...r.vals.slice(0,N).map(v=>v??'')];
+      rows.push(row.join(','));
+    });
+  }
+  const b=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download=`실시간압력_${new Date().toLocaleDateString('ko')}.csv`;a.click();
+  toast('💾 실시간 데이터를 엑셀(CSV)로 저장했어요!');
+}
+
+function copyLiveData(){
+  if(!liveBuf.length){toast('📋 복사할 실시간 데이터가 없어요');return;}
+  const u=uLbl();
+  const visCh=liveChList.filter(c=>c.vis);
+  let hd,rows;
+  if(visCh.length){
+    hd=['시각',...visCh.map(c=>c.label+'('+u+')')];
+    rows=[hd.join('\t')];
+    liveBuf.forEach(r=>{
+      const row=[r.t];
+      visCh.forEach(ch=>{
+        if(ch.type==='temp') row.push(r.vals[ch.thermoIdx]??'');
+        else{ const a=(r.aux||[]).find(x=>x.thermoIdx===ch.thermoIdx&&x.slotIdx===ch.slotIdx); row.push(a?a.value:''); }
+      });
+      rows.push(row.join('\t'));
+    });
+  }else{
+    hd=['시각',...Array.from({length:N},(_,i)=>`압력${i+1}(${u})`)];
+    rows=[hd.join('\t')];
+    liveBuf.forEach(r=>{
+      const row=[r.t,...r.vals.slice(0,N).map(v=>v??'')];
+      rows.push(row.join('\t'));
+    });
+  }
+  navigator.clipboard.writeText(rows.join('\n')).then(()=>toast('📋 실시간 데이터를 클립보드에 복사했어요!'),()=>toast('❌ 복사 실패 (HTTPS 환경 필요)'));
+}
+
+function liveChartPNG(){
+  // 전체화면 실시간 차트가 열려있으면 그쪽 사용
+  const srcChart = (dpFSLiveChart && dpFSCurrentTab === 'l') ? dpFSLiveChart : liveChart;
+  if(!srcChart || !liveBuf.length) return null;
+  const o=document.createElement('canvas');o.width=srcChart.canvas.width;o.height=srcChart.canvas.height;
+  const c=o.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,o.width,o.height);c.drawImage(srcChart.canvas,0,0);
+  return o.toDataURL('image/png');
+}
+function dlLiveChart(){
+  if(!liveBuf.length){toast('📷 실시간 그래프 데이터가 없어요');return;}
+  const url=liveChartPNG();if(!url)return;
+  const a=document.createElement('a');a.href=url;a.download=`실시간그래프_${new Date().toLocaleDateString('ko')}.png`;a.click();
+  toast('📷 실시간 그래프 이미지를 저장했어요!');
+}
+async function copyLiveChart(btn){
+  if(!liveBuf.length){toast('📷 실시간 그래프 데이터가 없어요');return;}
+  const url=liveChartPNG();if(!url)return;
+  try{
+    const bp=fetch(url).then(r=>r.blob());
+    await navigator.clipboard.write([new ClipboardItem({'image/png':bp})]);
+    const old=btn.innerHTML;btn.style.minWidth=btn.offsetWidth+'px';
+    btn.innerHTML='✅ 복사됨!';btn.style.background='var(--grn-s)';btn.style.color='var(--grn)';
+    setTimeout(()=>{btn.innerHTML=old;btn.style.background='';btn.style.color='';btn.style.minWidth='';},1800);
+  }catch(e){toast('❌ 이미지 복사 실패 (Chrome + HTTPS 필요)');}
+}
+const _origSwitchTab = switchTab;
+// switchTab 재정의는 아래 resize 이벤트에서 처리 — 탭 전환 시 차트 즉시 flush
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ════════════ 반응형 드로어 자동 접힘 (1400px 기준) ════════════
+const DESKTOP_BREAK = 1400;
+const MOB_BREAK = 768;
+
+function applyDrawerState(){
+  const w = window.innerWidth;
+  const ld = document.getElementById('ld');
+  const rd = document.getElementById('rd');
+  const laArr = document.getElementById('la-arr');
+  const raArr = document.getElementById('ra-arr');
+
+  if(w <= 767){
+    // 모바일: 항상 닫힘
+    ld.classList.add('col');
+    rd.classList.add('col');
+    document.getElementById('mob-overlay').classList.add('hide');
+  } else if(w < DESKTOP_BREAK){
+    // 1400px 미만: 자동으로 닫기
+    ld.classList.add('col');
+    rd.classList.add('col');
+    if(laArr) laArr.textContent = '▶';
+    if(raArr) raArr.textContent = '▶';
+  }
+  // 1400px 이상: 자동으로 열지 않음 — 사용자가 수동으로 제어
+}
+
+// 리사이즈 시 디바운스 처리
+let _resizeTmr = null;
+let _prevInnerWidth = window.innerWidth; // 이전 가로 폭 추적
+window.addEventListener('resize', () => {
+  if(chart) chart.resize();
+  clearTimeout(_resizeTmr);
+  _resizeTmr = setTimeout(() => {
+    const w = window.innerWidth;
+    const widthChanged = (w !== _prevInnerWidth);
+    _prevInnerWidth = w;
+
+    // 가로 폭이 변하지 않은 경우 (예: 스크린 키보드로 높이만 변경) → 드로어 상태 유지
+    if(!widthChanged) return;
+
+    const ld = document.getElementById('ld');
+    const rd = document.getElementById('rd');
+    const laArr = document.getElementById('la-arr');
+    const raArr = document.getElementById('ra-arr');
+
+    if(w <= 767){
+      ld.classList.add('col');
+      rd.classList.add('col');
+      document.getElementById('mob-overlay').classList.add('hide');
+    } else if(w < DESKTOP_BREAK){
+      // 1400 미만으로 줄어들면 자동 닫기
+      ld.classList.add('col');
+      rd.classList.add('col');
+      if(laArr) laArr.textContent = '▶';
+      if(raArr) raArr.textContent = '▶';
+    }
+    // 1400 이상: 사용자 상태 유지 (강제 열기 없음)
+  }, 120);
+});
+</script>
+</body>
+</html>

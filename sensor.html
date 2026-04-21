@@ -1,0 +1,262 @@
+<section class="sensor-page">
+  <div class="container">
+    <!-- Back to science experiments -->
+    <a href="#science" class="back-link">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 3 L3 7 L9 11 M3 7 H12"/>
+      </svg>
+      과학실험 도구 목록
+    </a>
+
+    <!-- Page header: sensor identity -->
+    <div class="page-head">
+      <div class="big-badge" id="pgBadge"></div>
+      <div>
+        <h1 id="pgTitle">—<span class="u" id="pgUnit">—</span></h1>
+        <div class="sub" id="pgSub">—</div>
+      </div>
+      <div class="live-big"><span class="blink"></span>LIVE · 1Hz</div>
+    </div>
+
+    <!-- Description -->
+    <div class="desc-box" id="pgDesc">—</div>
+
+    <!-- Stats row -->
+    <div class="stats-row">
+      <div class="stat-card current">
+        <div class="label">현재값 · CURRENT</div>
+        <div class="value"><span id="stCurrent">0</span><span class="u" id="stUnit">—</span></div>
+        <div class="trend" id="stTrend">↑ live</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">평균 · AVG</div>
+        <div class="value"><span id="stAvg">0</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="label">최소 · MIN</div>
+        <div class="value"><span id="stMin">0</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="label">최대 · MAX</div>
+        <div class="value"><span id="stMax">0</span></div>
+      </div>
+    </div>
+
+    <!-- Chart card -->
+    <div class="chart-card">
+      <div class="chart-top">
+        <div class="chart-label">실시간 스트림 · <strong id="chartRangeLabel">최근 30초</strong></div>
+        <div class="range-tabs">
+          <button class="on" data-range="30">30s</button>
+          <button data-range="60">1m</button>
+          <button data-range="120">2m</button>
+          <button data-range="300">5m</button>
+        </div>
+      </div>
+      <canvas id="sensor-chart"></canvas>
+    </div>
+
+    <!-- Footer meta -->
+    <div class="footer-meta">
+      <div>SAMPLING RATE · <span style="color:var(--ink);">1 Hz</span></div>
+      <div>DATA POINTS · <span style="color:var(--ink);" id="pointCount">0</span></div>
+      <div>SESSION · <span style="color:var(--ink);" id="sessionTime">00:00</span></div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function() {
+  const SENSORS = window.SENSORS || [];
+  const key = window.__routeParam;
+  const sensor = SENSORS.find(s => s.key === key);
+
+  // If sensor not found or is the placeholder, show fallback
+  if (!sensor || sensor.key === 'empty') {
+    document.querySelector('.sensor-page .container').innerHTML = `
+      <a href="#science" class="back-link">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 3 L3 7 L9 11 M3 7 H12"/>
+        </svg>
+        과학실험 도구 목록
+      </a>
+      <div class="load-error">
+        <h3>센서를 찾을 수 없습니다</h3>
+        <p>요청하신 센서 "<code>${key || '(없음)'}</code>"는 아직 준비 중이거나 존재하지 않습니다.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Fill header
+  document.getElementById('pgBadge').innerHTML =
+    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="${sensor.icon}"/></svg>`;
+  document.getElementById('pgTitle').childNodes[0].nodeValue = sensor.name;
+  document.getElementById('pgUnit').textContent = sensor.unit;
+  document.getElementById('pgSub').textContent = sensor.key.toUpperCase() + ' SENSOR · REAL-TIME STREAM · DATA-DRIVEN SCIENCE';
+  document.getElementById('stUnit').textContent = ' ' + sensor.unit;
+  document.getElementById('pgDesc').textContent = sensor.desc || '';
+
+  // State
+  let chart = null;
+  let currentRange = 30;
+  let tickTimer = null;
+  let sessionTimer = null;
+  let dataBuffer = [];
+  const sessionStart = Date.now();
+
+  function generateValue(ts) {
+    const t = ts / 1000;
+    const sine = Math.sin(t * sensor.freq) * sensor.amp * 0.6;
+    const sine2 = Math.sin(t * sensor.freq * 2.3) * sensor.amp * 0.25;
+    const noise = (Math.random() - 0.5) * sensor.amp * 0.3;
+    return sensor.base + sine + sine2 + noise;
+  }
+
+  function seedBuffer() {
+    dataBuffer = [];
+    const now = Date.now();
+    for (let i = currentRange - 1; i >= 0; i--) {
+      dataBuffer.push({ t: now - i*1000, v: generateValue(now - i*1000) });
+    }
+  }
+
+  function tick() {
+    const now = Date.now();
+    dataBuffer.push({ t: now, v: generateValue(now) });
+    while (dataBuffer.length > currentRange) dataBuffer.shift();
+
+    chart.data.labels = dataBuffer.map((_, i) => i - dataBuffer.length + 1 + 's');
+    chart.data.datasets[0].data = dataBuffer.map(d => d.v);
+    chart.update('none');
+
+    updateStats();
+    document.getElementById('pointCount').textContent = dataBuffer.length;
+  }
+
+  function updateStats() {
+    const vals = dataBuffer.map(d => d.v);
+    if (vals.length === 0) return;
+    const cur = vals[vals.length - 1];
+    const prev = vals[vals.length - 2] || cur;
+    const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+
+    const decimals = sensor.base < 10 ? 2 : (sensor.base < 100 ? 1 : 0);
+    document.getElementById('stCurrent').textContent = cur.toFixed(decimals);
+    document.getElementById('stAvg').textContent = avg.toFixed(decimals);
+    document.getElementById('stMin').textContent = min.toFixed(decimals);
+    document.getElementById('stMax').textContent = max.toFixed(decimals);
+
+    const trendEl = document.getElementById('stTrend');
+    const delta = cur - prev;
+    if (delta > 0.01) {
+      trendEl.textContent = '↑ +' + Math.abs(delta).toFixed(decimals);
+    } else if (delta < -0.01) {
+      trendEl.textContent = '↓ −' + Math.abs(delta).toFixed(decimals);
+    } else {
+      trendEl.textContent = '— stable';
+    }
+  }
+
+  function buildChart() {
+    const ctx = document.getElementById('sensor-chart');
+    if (chart) chart.destroy();
+
+    const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 420);
+    gradient.addColorStop(0, sensor.color + '55');
+    gradient.addColorStop(1, sensor.color + '00');
+
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: dataBuffer.map((_, i) => i - dataBuffer.length + 1 + 's'),
+        datasets: [{
+          label: sensor.name,
+          data: dataBuffer.map(d => d.v),
+          borderColor: sensor.color,
+          backgroundColor: gradient,
+          borderWidth: 2.4,
+          fill: true,
+          tension: 0.35,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: sensor.color,
+          pointHoverBorderColor: '#faf8f3',
+          pointHoverBorderWidth: 2.5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 0 },
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#161613',
+            titleFont: { family: 'JetBrains Mono', size: 10 },
+            bodyFont: { family: 'JetBrains Mono', size: 13, weight: 'bold' },
+            padding: 12,
+            displayColors: false,
+            callbacks: {
+              label: (c) => c.parsed.y.toFixed(2) + ' ' + sensor.unit
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: '#e3dfd3', drawTicks: false },
+            ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#8b877d', maxTicksLimit: 10 },
+            border: { color: '#d5d0c3' }
+          },
+          y: {
+            grid: { color: '#e3dfd3', drawTicks: false },
+            ticks: { font: { family: 'JetBrains Mono', size: 10 }, color: '#8b877d' },
+            border: { display: false }
+          }
+        }
+      }
+    });
+  }
+
+  function fmtTime(ms) {
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    return String(m).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0');
+  }
+
+  // Range tabs
+  document.querySelectorAll('.range-tabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.range-tabs button').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      currentRange = +btn.dataset.range;
+      const labelMap = { 30: '최근 30초', 60: '최근 1분', 120: '최근 2분', 300: '최근 5분' };
+      document.getElementById('chartRangeLabel').textContent = labelMap[currentRange];
+      seedBuffer();
+      buildChart();
+      updateStats();
+    });
+  });
+
+  // Boot
+  seedBuffer();
+  buildChart();
+  updateStats();
+  document.getElementById('pointCount').textContent = dataBuffer.length;
+
+  tickTimer = setInterval(tick, 1000);
+  sessionTimer = setInterval(() => {
+    document.getElementById('sessionTime').textContent = fmtTime(Date.now() - sessionStart);
+  }, 1000);
+
+  // Cleanup when navigating away
+  window.__pageCleanup = function() {
+    clearInterval(tickTimer);
+    clearInterval(sessionTimer);
+    if (chart) { chart.destroy(); chart = null; }
+  };
+})();
+</script>

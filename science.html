@@ -1,0 +1,90 @@
+<section class="block" id="tools" style="border-top: none;">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="idx">— SECTION 01 / SCIENCE TOOLS</div>
+        <h2 style="margin-top:6px;">웹기반 과학실험 도구</h2>
+      </div>
+      <div class="desc">
+        브라우저에서 바로 연결되는 18종의 센서.<br>
+        클릭 한 번으로 실시간 데이터를 관찰하세요.
+      </div>
+    </div>
+
+    <!-- Dashboard banners -->
+    <div class="dash-banners">
+      <a class="dash-banner" href="#dash/gage">
+        <div class="glyph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="8" height="9" rx="1"/>
+            <rect x="13" y="3" width="8" height="5" rx="1"/>
+            <rect x="13" y="10" width="8" height="11" rx="1"/>
+            <rect x="3" y="14" width="8" height="7" rx="1"/>
+          </svg>
+        </div>
+        <div class="text">
+          <h3>통합 대시보드</h3>
+          <p>다양한 측정 도구를 한 화면에</p>
+        </div>
+        <div class="arrow">→</div>
+      </a>
+
+      <a class="dash-banner alt" href="#dash/total">
+        <div class="glyph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 17 L9 11 L13 15 L21 6"/>
+            <circle cx="9" cy="11" r="1.5" fill="currentColor"/>
+            <circle cx="13" cy="15" r="1.5" fill="currentColor"/>
+            <circle cx="21" cy="6" r="1.5" fill="currentColor"/>
+            <path d="M3 21 H21" stroke-dasharray="2 2"/>
+          </svg>
+        </div>
+        <div class="text">
+          <h3>분석 대시보드</h3>
+          <p>데이터 분석 중심 워크스페이스</p>
+        </div>
+        <div class="arrow">→</div>
+      </a>
+    </div>
+
+    <!-- Sensor grid -->
+    <div class="sensor-grid" id="sensorGrid"></div>
+  </div>
+</section>
+
+<script>
+(function() {
+  const SENSORS = window.SENSORS || [];
+  const grid = document.getElementById('sensorGrid');
+
+  SENSORS.forEach(s => {
+    // Sensors with a file open their real dashboard in an iframe (#dash/{key}).
+    // Sensors without a file fall back to the live fake-data dashboard (#sensor/{key}).
+    const el = document.createElement('a');
+    el.className = 'sensor';
+    el.dataset.key = s.key;
+    el.href = s.file ? ('#dash/' + s.key) : ('#sensor/' + s.key);
+    el.style.textDecoration = 'none';
+    el.style.color = 'inherit';
+
+    // Small badge in the corner to indicate which sensors have real dashboards vs simulated
+    const badge = s.file
+      ? '<span class="sensor-dot-ok" title="실제 대시보드 연결됨"></span>'
+      : '<span class="sensor-dot-sim" title="시뮬레이션 데이터"></span>';
+
+    el.innerHTML = `
+      <div class="top-row">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="${s.icon}"/>
+        </svg>
+        ${badge}
+      </div>
+      <div>
+        <div class="name">${s.name}</div>
+        <div class="unit">${s.unit}</div>
+      </div>
+    `;
+    grid.appendChild(el);
+  });
+})();
+</script>

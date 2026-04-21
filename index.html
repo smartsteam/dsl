@@ -1,770 +1,1361 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DSL - Digital Science Lab (Stop/Start Markers)</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary-blue: #007bff;
-            --bg-light-gray: #f4f6f9;
-            --bg-white: #ffffff;
-            --text-dark: #333333;
-            --text-gray: #666666;
-            --border-color: #e0e0e0;
-            --success-green: #28a745;
-            --danger-red: #dc3545;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-STEAM · 피지컬 AI 시대의 과학 교육</title>
 
-        body {
-            font-family: 'Noto Sans KR', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-light-gray);
-            margin: 0; padding: 0; color: var(--text-dark);
-            height: 100vh; display: flex; flex-direction: column;
-        }
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 
-        /* --- Header --- */
-        .top-header {
-            background-color: var(--bg-white); padding: 10px 20px;
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid var(--border-color); flex-shrink: 0;
-        }
-        .brand { display: flex; align-items: center; gap: 10px; font-weight: bold; color: var(--primary-blue); font-size: 1.2rem; }
-        .header-controls { display: flex; gap: 15px; align-items: center; }
-        .status-badge {
-            padding: 5px 10px; border-radius: 20px; font-size: 0.85rem; background-color: #eee;
-            color: var(--text-gray); display: flex; align-items: center; gap: 5px;
-        }
-        .status-badge.connected { background-color: #d4edda; color: var(--success-green); }
-        .btn {
-            padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;
-            display: flex; align-items: center; gap: 8px; font-size: 0.9rem;
-        }
-        .btn-primary { background-color: var(--primary-blue); color: white; }
-        .btn-secondary { background-color: #e9ecef; color: var(--text-dark); }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-        /* --- Layout --- */
-        .main-container { display: flex; flex: 1; padding: 20px; gap: 20px; overflow: hidden; }
-        .left-panel { flex: 7; display: flex; flex-direction: column; overflow: hidden; gap: 15px; }
-        .right-panel { flex: 3; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
-        .card {
-            background-color: var(--bg-white); border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px;
-            display: flex; flex-direction: column;
-        }
+<!-- Shared sensor definitions (used by science.html, sensor.html, dashview.html) -->
+<script>
+window.SENSORS = [
+  { key:'light',    name:'빛',       unit:'lux',    base:420,  amp:90,  freq:0.15, color:'#f6b93b', file:'S_03_light_V8_0414_Y축오류수정.html',      desc:'주변 광량(조도)을 실시간으로 측정합니다. 실내 일반 조명은 보통 200~500 lux, 야외 직사광선은 10,000 lux 이상입니다.', icon:'M12 4 V7 M12 17 V20 M4 12 H7 M17 12 H20 M6.3 6.3 L8.4 8.4 M15.6 15.6 L17.7 17.7 M6.3 17.7 L8.4 15.6 M15.6 8.4 L17.7 6.3 M12 9 a3 3 0 1 1 0 6 3 3 0 1 1 0 -6' },
+  { key:'sound',    name:'소리',     unit:'dB',     base:48,   amp:18,  freq:0.5,  color:'#e8431f', file:'S_04_sound_V12_0414_Y축오류수정.html',     desc:'음압 수준(데시벨)을 측정합니다. 조용한 도서관은 약 30 dB, 일상 대화는 60 dB, 교통 소음은 80 dB 이상입니다.', icon:'M5 10 V14 M8 8 V16 M11 5 V19 M14 8 V16 M17 10 V14 M20 12 V12' },
+  { key:'distance', name:'거리',     unit:'cm',     base:80,   amp:35,  freq:0.1,  color:'#1a37ff', file:'S_05_ultra_V10_0414_Y축오류수정.html',     desc:'초음파 센서로 물체까지의 거리를 측정합니다. 측정 범위는 대략 2 cm ~ 400 cm 입니다.', icon:'M3 12 H21 M3 12 L6 9 M3 12 L6 15 M21 12 L18 9 M21 12 L18 15' },
+  { key:'weight',   name:'무게',     unit:'g',      base:520,  amp:25,  freq:0.05, color:'#7a5cff', file:'S_14_scale_V10_0414_Y축오류수정.html',     desc:'로드셀을 이용해 물체의 질량을 측정합니다. 힘의 변화, 질량 보존 법칙 등을 관찰할 수 있습니다.', icon:'M4 8 H20 L18 20 H6 Z M9 8 V5 a3 3 0 1 1 6 0 V8' },
+  { key:'atm',      name:'대기압',   unit:'hPa',    base:1013, amp:4,   freq:0.03, color:'#00a4a4', file:'S_07_airpressure_V11_0414_Y축오류수정.html',desc:'대기의 압력을 측정합니다. 표준 대기압은 1013.25 hPa이며, 고도와 기상 변화에 따라 달라집니다.', icon:'M12 3 a9 9 0 1 0 0 18 9 9 0 1 0 0 -18 M12 3 V21 M3 12 H21 M5.6 5.6 L18.4 18.4 M18.4 5.6 L5.6 18.4' },
+  { key:'air',      name:'공기압',   unit:'kPa',    base:101,  amp:2,   freq:0.04, color:'#00a4a4', file:'S_22_공기압_V7_0414_Y축오류수정.html',     desc:'밀폐된 공간의 공기 압력을 측정합니다. 보일의 법칙, 기체의 성질 실험에 활용됩니다.', icon:'M12 3 V12 L17 15 M12 21 a9 9 0 1 1 0 -18 9 9 0 1 1 0 18' },
+  { key:'temp',     name:'온도',     unit:'°C',     base:22,   amp:3.5, freq:0.08, color:'#e8431f', file:'S_01_temp_V14_0414_Y축오류수정.html',      desc:'주변 온도를 섭씨 단위로 측정합니다. 열 전달, 상태 변화, 엔트로피 등 열역학 실험의 기본입니다.', icon:'M10 4 a2 2 0 1 1 4 0 V14 a4 4 0 1 1 -4 0 Z M12 8 V14' },
+  { key:'humid',    name:'습도',     unit:'%RH',    base:55,   amp:8,   freq:0.1,  color:'#1a37ff', file:'S_02_humidity_V1_0416.html',              desc:'상대 습도(%)를 측정합니다. 수증기의 응결, 포화 수증기량, 기상 현상 탐구에 사용됩니다.', icon:'M12 3 C 8 9, 5 13, 5 16 a7 7 0 1 0 14 0 C 19 13, 16 9, 12 3 Z' },
+  { key:'th',       name:'온/습도',  unit:'°C·%',   base:21,   amp:4,   freq:0.09, color:'#7a5cff',                                                desc:'온도와 습도를 동시에 측정합니다. 이슬점 계산, 체감 온도 탐구 등 통합 분석에 유용합니다.', icon:'M8 4 a1.5 1.5 0 1 1 3 0 V13 a3 3 0 1 1 -3 0 Z M15 6 C 13 10, 12 13, 12 15 a3 3 0 1 0 6 0 C 18 13, 17 10, 15 6 Z' },
+  { key:'waterT',   name:'수중온도', unit:'°C',     base:17,   amp:2,   freq:0.06, color:'#1a37ff', file:'S_06_watertemp_V11_0414_Y축오류수정.html',  desc:'방수 프로브로 액체 내부의 온도를 측정합니다. 비열 실험, 물의 상태 변화 관찰에 사용됩니다.', icon:'M10 3 a2 2 0 1 1 4 0 V13 a4 4 0 1 1 -4 0 Z M3 20 Q 6 17 9 20 T 15 20 T 21 20' },
+  { key:'hotT',     name:'고온',     unit:'°C',     base:180,  amp:25,  freq:0.1,  color:'#e8431f', file:'S_24_고온_V4_0414_Y축오류수정.html',       desc:'고온 환경(최대 약 500°C)을 측정하는 열전대 센서입니다. 연소 반응, 발열 실험에 활용됩니다.', icon:'M10 3 a2 2 0 1 1 4 0 V14 a4 4 0 1 1 -4 0 Z M12 19 V22 M9 20 L15 20' },
+  { key:'co2',      name:'CO₂',      unit:'ppm',    base:450,  amp:80,  freq:0.03, color:'#18a04a', file:'S_25_CO2_V4_0414_Y축오류수정.html',        desc:'이산화탄소 농도(ppm)를 측정합니다. 실외 공기는 보통 약 400 ppm, 밀폐된 실내가 1000 ppm 이상이면 환기가 필요합니다.', icon:'M4 12 a2 2 0 1 0 4 0 2 2 0 1 0 -4 0 M10 12 a2 2 0 1 0 4 0 2 2 0 1 0 -4 0 M16 12 a2 2 0 1 0 4 0 2 2 0 1 0 -4 0' },
+  { key:'current',  name:'전류',     unit:'mA',     base:120,  amp:30,  freq:0.4,  color:'#ffc107', file:'S_16_current_V1_0421.html',               desc:'회로에 흐르는 전류를 측정합니다. 옴의 법칙, 직·병렬 회로 분석에 필수적입니다.', icon:'M13 3 L5 14 H11 L10 21 L18 10 H12 Z' },
+  { key:'voltage',  name:'전압',     unit:'V',      base:5.0,  amp:0.6, freq:0.3,  color:'#ffc107', file:'S_17_voltage_V1_0421.html',               desc:'두 지점 사이의 전위차를 측정합니다. 전지의 기전력, 내부 저항 탐구 등에 활용됩니다.', icon:'M5 7 L10 17 L14 10 L19 17' },
+  { key:'induced',  name:'유도전류', unit:'mA',     base:0,    amp:15,  freq:0.6,  color:'#d946ef', file:'S_18_DIY-A_유도전류_V1_0421.html',         desc:'DIY-A 센서로 전자기 유도에 의해 발생하는 미세 전류를 측정합니다. 패러데이 법칙, 렌츠 법칙 실험에 활용됩니다.', icon:'M4 6 V18 M4 6 H8 M4 12 H8 M4 18 H8 M12 6 C 14 6, 14 18, 16 18 C 18 18, 18 6, 20 6 M14 4 V8 M18 16 V20' },
+  { key:'conduct',  name:'전도도',   unit:'μS/cm',  base:450,  amp:50,  freq:0.15, color:'#06b6d4', file:'S_19_DIY-B_전도도_V1_0421.html',           desc:'DIY-B 센서로 용액의 전기 전도도를 측정합니다. 이온화도, 용해도, 전해질 실험에 활용됩니다.', icon:'M6 4 V14 a3 3 0 1 0 6 0 V4 M4 4 H8 M10 4 H14 M16 8 V18 M14 8 H18 M13 14 H19' },
+  { key:'magnetic', name:'자기장',   unit:'mT',     base:1.2,  amp:0.5, freq:0.2,  color:'#7a5cff', file:'S_21_자기장_V6_0414_Y축오류수정.html',     desc:'홀 효과 센서로 자기장의 세기를 측정합니다. 전자기 유도, 영구 자석의 자기력 관찰에 사용됩니다.', icon:'M5 6 V12 a7 7 0 0 0 14 0 V6 M5 6 H9 M15 6 H19' },
+  { key:'gyro',     name:'자이로',   unit:'°/s',    base:0,    amp:25,  freq:0.5,  color:'#00a4a4', file:'S_20_자이로_V5_0414_Y축오류수정.html',     desc:'3축 각속도(회전 속도)를 측정합니다. 회전 운동, 각운동량 보존 실험에 활용됩니다.', icon:'M12 3 a9 9 0 1 0 0 18 9 9 0 1 0 0 -18 M3 12 a9 4 0 1 0 18 0 9 4 0 1 0 -18 0 M12 3 V21' },
+  { key:'ph',       name:'PH',       unit:'pH',     base:6.8,  amp:0.4, freq:0.04, color:'#18a04a', file:'S_23_PH_V4_0414_Y축오류수정.html',         desc:'용액의 산·염기도를 측정합니다. pH 7은 중성, 그보다 낮으면 산성, 높으면 염기성입니다.', icon:'M6 3 V13 a3 3 0 1 0 6 0 V3 M4 3 H8 M15 8 L15 20 M12 13 H18' },
+  { key:'dust',     name:'미세먼지', unit:'μg/m³',  base:32,   amp:15,  freq:0.08, color:'#8b877d', file:'S_10_dust_V6_0414_Y축오류수정.html',       desc:'공기 중 미세 입자 농도를 측정합니다. "좋음"은 0~30, "보통"은 31~80, "나쁨"은 81 이상입니다.', icon:'M5 8 a2 2 0 1 1 4 0 2 2 0 1 1 -4 0 M15 7 a1.5 1.5 0 1 1 3 0 1.5 1.5 0 1 1 -3 0 M9 14 a2 2 0 1 1 4 0 2 2 0 1 1 -4 0 M16 15 a1.5 1.5 0 1 1 3 0 1.5 1.5 0 1 1 -3 0' }
+];
+</script>
 
-        /* --- Chart Section --- */
-        .chart-card { flex: 1; min-height: 0; display:flex; flex-direction:column; }
-        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-shrink: 0; flex-wrap: wrap; gap:10px; }
-        .chart-title { font-size: 1.1rem; font-weight: bold; color: var(--primary-blue); display: flex; align-items: center; gap: 8px; }
-        .chart-controls {
-            display: flex; gap: 15px; align-items: center; font-size: 0.9rem;
-            background-color: var(--bg-light-gray); padding: 8px 15px; border-radius: 20px;
-        }
-        .control-item { display: flex; align-items: center; gap: 8px; border-right: 1px solid #ddd; padding-right: 15px; }
-        .control-item:last-child { border-right: none; padding-right: 0; }
-        
-        .toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--primary-blue); }
-        input:checked + .slider:before { transform: translateX(16px); }
+<style>
+:root {
+  --bg: #f4f1ea;
+  --bg-alt: #ece8de;
+  --ink: #161613;
+  --ink-soft: #44423c;
+  --ink-mute: #8b877d;
+  --line: #d5d0c3;
+  --line-soft: #e3dfd3;
+  --paper: #faf8f3;
+  --accent: #1a37ff;
+  --accent-soft: #dbdfff;
+  --warn: #e8431f;
 
-        .y-inputs input, #timeFormatSelect { 
-            width: 50px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; 
-            background-color: var(--bg-white); 
-            text-align: center; font-size: 0.9rem;
-        }
-        .y-inputs input { width: 50px; text-align: center; } 
-        #timeFormatSelect { width: 120px; } 
+  --font-kr: "Pretendard Variable", Pretendard, -apple-system, sans-serif;
+  --font-display: "Fraunces", "Pretendard Variable", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-        .chart-area { flex: 1; position: relative; width: 100%; height: 100%; min-height: 300px;}
+  --radius: 14px;
+  --radius-lg: 22px;
+}
 
-        /* --- Navigator Slider --- */
-        .navigator-container {
-            margin-top: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 8px; border: 1px solid #eee;
-        }
-        .navigator-label { font-size: 0.85rem; color: var(--text-gray); margin-bottom: 5px; display: flex; justify-content: space-between; }
-        input[type="range"].history-slider { width: 100%; cursor: pointer; accent-color: var(--primary-blue); }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
-        /* --- Right Panel --- */
-        .info-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; flex-shrink: 0; }
-        .info-card { 
-            flex: 1; background-color: var(--bg-white); padding: 15px; border-radius: 10px; 
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
-            border: 1px solid #ddd; 
-            text-align: center;
-        }
+body {
+  margin: 0;
+  font-family: var(--font-kr);
+  background: var(--bg);
+  color: var(--ink);
+  font-feature-settings: "ss01", "ss02";
+  background-image: radial-gradient(circle, rgba(22,22,19,0.055) 1px, transparent 1px);
+  background-size: 22px 22px;
+  background-position: 0 0;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
 
-        .info-label { font-size: 0.85rem; color: var(--text-gray); margin-bottom: 5px; }
-        .info-value { font-size: 1.5rem; font-weight: bold; color: var(--text-dark); }
+.container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
 
-        .log-card { flex: 1; display: flex; flex-direction: column; min-height: 200px; }
-        .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--success-green); font-weight: bold; flex-shrink: 0; }
-        .log-tools i { cursor: pointer; margin-left: 10px; font-size: 1.1rem; }
-        .table-wrapper { flex: 1; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: center; }
-        th { position: sticky; top: 0; background-color: #f8f9fa; color: var(--text-gray); padding: 8px; border-bottom: 1px solid var(--border-color); z-index: 5; }
-        td { padding: 6px 8px; border-bottom: 1px solid #eee; white-space: nowrap; }
-        
-        .sensor-input {
-            border: 1px solid transparent; background: transparent; font-weight: bold;
-            color: var(--text-gray); width: 80px; text-align: center; cursor: pointer;
-        }
-        .sensor-input:hover, .sensor-input:focus { border: 1px solid #ddd; background: white; outline: none; border-radius: 4px; }
+/* ═══════════ NAVIGATION ═══════════ */
+nav.top {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(12px) saturate(1.2);
+  background: rgba(244, 241, 234, 0.78);
+  border-bottom: 1px solid var(--line);
+}
+nav.top .wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 18px 32px;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+nav.top .logo {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+nav.top .logo .dot {
+  width: 10px; height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.85; }
+}
+nav.top ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 28px;
+  font-size: 14px;
+  font-weight: 500;
+}
+nav.top ul a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  transition: color 0.2s;
+  position: relative;
+  cursor: pointer;
+}
+nav.top ul a:hover { color: var(--ink); }
+nav.top ul a.active { color: var(--ink); }
+nav.top ul a.active::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  bottom: -6px;
+  height: 2px;
+  background: var(--accent);
+}
+nav.top .email {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 7px 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  transition: all 0.2s;
+}
+nav.top .email:hover {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
 
-        @media (max-width: 1024px) {
-            .main-container { flex-direction: column; overflow-y: auto; }
-            .left-panel, .right-panel { flex: none; height: auto; }
-            .chart-card { min-height: 450px; }
-            .info-cards { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 600px) {
-            .info-cards { grid-template-columns: 1fr; }
-        }
-    </style>
+/* Q&A tooltip */
+nav.top li.has-tip { position: relative; }
+nav.top li.has-tip .tip {
+  position: absolute;
+  top: calc(100% + 14px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: #ffffff;
+  color: var(--ink);
+  padding: 12px 16px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  box-shadow: 0 10px 30px rgba(22, 22, 19, 0.12);
+  z-index: 10;
+}
+nav.top li.has-tip:hover .tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+nav.top li.has-tip .tip-label {
+  font-family: var(--font-kr);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink-mute);
+  margin-bottom: 4px;
+}
+nav.top li.has-tip .tip-code {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+nav.top li.has-tip .tip-arrow {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  border-radius: 2px;
+}
+
+/* ═══════════ HERO ═══════════ */
+.hero {
+  padding: 90px 0 60px;
+  position: relative;
+}
+.hero .eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.hero .eyebrow::before {
+  content: '';
+  width: 34px; height: 1px;
+  background: var(--ink);
+}
+.hero h1 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(42px, 6.2vw, 84px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  margin: 0 0 12px;
+  font-variation-settings: "opsz" 144;
+}
+.hero h1 .italic {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--accent);
+}
+.hero h2 {
+  font-family: var(--font-kr);
+  font-size: clamp(18px, 1.9vw, 22px);
+  font-weight: 500;
+  color: var(--ink-soft);
+  margin: 28px 0 0;
+  max-width: 720px;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+}
+.hero h2 .sep {
+  color: var(--line);
+  margin: 0 10px;
+  font-weight: 300;
+}
+.hero-meta {
+  position: absolute;
+  top: 110px;
+  right: 32px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  text-align: right;
+  line-height: 1.8;
+}
+.hero-meta .row { display: flex; gap: 12px; justify-content: flex-end; }
+.hero-meta .label { color: var(--ink-mute); }
+.hero-meta .val { color: var(--ink); }
+
+/* ═══════════ CONCEPT CARDS ═══════════ */
+.concepts {
+  padding: 40px 0 100px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.concept {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px 22px 22px;
+  position: relative;
+  transition: transform 0.25s, border-color 0.25s;
+  overflow: hidden;
+}
+.concept:hover { transform: translateY(-3px); border-color: var(--ink); }
+.concept .num {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-mute);
+  letter-spacing: 0.05em;
+  margin-bottom: 14px;
+}
+.concept .icon { width: 38px; height: 38px; margin-bottom: 16px; color: var(--ink); }
+.concept .title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+.concept .title span { color: var(--accent); }
+
+/* ═══════════ SECTION HEADERS ═══════════ */
+section.block {
+  padding: 80px 0;
+  border-top: 1px solid var(--line);
+}
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 44px;
+  gap: 32px;
+}
+.section-head h2 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(32px, 4.4vw, 52px);
+  letter-spacing: -0.025em;
+  margin: 0;
+  line-height: 1;
+}
+.section-head .idx {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-mute);
+  letter-spacing: 0.05em;
+}
+.section-head .desc {
+  font-size: 14px;
+  color: var(--ink-soft);
+  max-width: 380px;
+  text-align: right;
+  line-height: 1.6;
+}
+
+/* ═══════════ DASHBOARD BANNER CARDS ═══════════ */
+.dash-banners {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.dash-banner {
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--radius-lg);
+  padding: 28px 30px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  cursor: pointer;
+  transition: transform 0.25s;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+}
+.dash-banner:hover { transform: translateY(-3px); }
+.dash-banner.alt { background: var(--accent); }
+.dash-banner .glyph {
+  width: 54px; height: 54px;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.dash-banner .glyph svg { width: 26px; height: 26px; }
+.dash-banner .text h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.dash-banner .text p {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.75;
+  font-family: var(--font-mono);
+}
+.dash-banner .arrow { margin-left: auto; font-size: 22px; transition: transform 0.25s; }
+.dash-banner:hover .arrow { transform: translateX(5px); }
+
+/* ═══════════ SENSOR GRID ═══════════ */
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+.sensor {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  min-height: 128px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.sensor:hover {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  transform: translateY(-3px);
+}
+.sensor:hover .icon { color: var(--paper); }
+.sensor:hover .unit { color: rgba(250,248,243,0.6); }
+.sensor:hover .dot { background: var(--accent); }
+.sensor.active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.sensor.active .icon { color: var(--paper); }
+.sensor.active .unit { color: rgba(250,248,243,0.6); }
+.sensor.active .dot { background: var(--accent); }
+.sensor .top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.sensor .icon { width: 26px; height: 26px; color: var(--ink); transition: color 0.2s; }
+.sensor .dot {
+  width: 6px; height: 6px;
+  background: var(--line);
+  border-radius: 50%;
+  transition: background 0.2s;
+  margin-top: 6px;
+}
+.sensor .name { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.sensor .unit {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-mute);
+  margin-top: 3px;
+  transition: color 0.2s;
+}
+.sensor .sensor-dot-ok,
+.sensor .sensor-dot-sim {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.sensor .sensor-dot-ok {
+  background: #18a04a;
+  box-shadow: 0 0 0 3px rgba(24, 160, 74, 0.12);
+}
+.sensor .sensor-dot-sim {
+  background: transparent;
+  border: 1px dashed var(--ink-mute);
+}
+.sensor:hover .sensor-dot-ok,
+.sensor.active .sensor-dot-ok { background: #4ade80; box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2); }
+.sensor:hover .sensor-dot-sim,
+.sensor.active .sensor-dot-sim { border-color: rgba(250,248,243,0.5); }
+
+/* ═══════════ DASHBOARD PANEL ═══════════ */
+#dashboard-panel {
+  display: none;
+  margin-top: 36px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.dash-header {
+  padding: 22px 28px;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.dash-header .sensor-badge {
+  width: 44px; height: 44px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+}
+.dash-header .sensor-badge svg { width: 22px; height: 22px; }
+.dash-header .title-block h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.dash-header .title-block .sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  margin-top: 4px;
+  letter-spacing: 0.04em;
+}
+.dash-header .live {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 11px;
+  background: var(--bg);
+  border-radius: 999px;
+  color: var(--ink-soft);
+}
+.dash-header .live .blink {
+  width: 7px; height: 7px;
+  background: var(--warn);
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+.dash-header .close-btn {
+  width: 34px; height: 34px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: all 0.2s;
+  color: var(--ink-soft);
+}
+.dash-header .close-btn:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.dash-stats {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  border-bottom: 1px solid var(--line-soft);
+}
+.dash-stats .stat { padding: 22px 28px; border-right: 1px solid var(--line-soft); }
+.dash-stats .stat:last-child { border-right: none; }
+.dash-stats .stat .label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-mute);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.dash-stats .stat .value {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.dash-stats .stat .value .unit {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-mute);
+  margin-left: 4px;
+  font-weight: 400;
+}
+.dash-stats .stat.current .value { color: var(--accent); }
+.dash-stats .stat .trend {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  margin-top: 6px;
+}
+.dash-stats .stat .trend.up { color: #18a04a; }
+.dash-stats .stat .trend.down { color: var(--warn); }
+.dash-chart-wrap { padding: 24px 28px 28px; position: relative; }
+.dash-chart-wrap .range-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  justify-content: flex-end;
+}
+.range-tabs button {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 11px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.range-tabs button:hover { color: var(--ink); border-color: var(--ink-soft); }
+.range-tabs button.on {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+#chart-canvas { height: 300px !important; }
+
+/* ═══════════ SIMULATION CONTENT GRID ═══════════ */
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
+}
+.content-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  aspect-ratio: 1 / 1.1;
+  padding: 18px;
+  cursor: pointer;
+  transition: all 0.25s;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+.content-card:hover { border-color: var(--ink); transform: translateY(-3px); }
+.content-card .thumb {
+  flex: 1;
+  background: var(--bg-alt);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.25s;
+}
+.content-card:hover .thumb { background: var(--accent-soft); }
+.content-card .thumb svg { width: 42%; height: 42%; color: var(--ink-soft); }
+.content-card .meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.content-card .meta .title { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+.content-card .meta .num { font-family: var(--font-mono); font-size: 10px; color: var(--ink-mute); }
+
+/* ═══════════ FOOTER ═══════════ */
+footer {
+  border-top: 1px solid var(--line);
+  padding: 60px 0 40px;
+  margin-top: 40px;
+}
+footer .foot-wrap {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid var(--line);
+}
+footer h4 {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 14px;
+  font-weight: 500;
+}
+footer .brand .tag {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0 0 10px;
+  max-width: 280px;
+}
+footer .brand .tag em { font-style: italic; color: var(--accent); }
+footer .brand p { font-size: 13px; color: var(--ink-soft); max-width: 340px; margin: 0; }
+footer ul { list-style: none; padding: 0; margin: 0; }
+footer ul li {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  padding: 4px 0;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+footer ul li:hover { color: var(--ink); }
+footer .legal {
+  padding-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+}
+
+/* ═══════════ LOADING / ERROR ═══════════ */
+.loader {
+  padding: 120px 32px;
+  text-align: center;
+  font-family: var(--font-mono);
+  color: var(--ink-mute);
+  font-size: 13px;
+}
+.loader .spin {
+  width: 24px; height: 24px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  margin: 0 auto 14px;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.load-error {
+  max-width: 620px;
+  margin: 100px auto;
+  padding: 40px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+.load-error h3 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
+  margin: 0 0 12px;
+}
+.load-error p { color: var(--ink-soft); font-size: 14px; line-height: 1.7; }
+.load-error code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: var(--bg);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: var(--ink);
+}
+.load-error .tip-box {
+  margin-top: 18px;
+  padding: 16px 18px;
+  background: var(--bg);
+  border-radius: 10px;
+  border-left: 3px solid var(--accent);
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.page-fade {
+  animation: pageFade 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes pageFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════ SENSOR DETAIL PAGE ═══════════ */
+.sensor-page {
+  padding: 44px 0 80px;
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 8px 14px 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  transition: all 0.2s;
+  margin-bottom: 40px;
+  background: var(--paper);
+}
+.back-link:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+  transform: translateX(-3px);
+}
+.back-link svg { width: 14px; height: 14px; }
+
+.sensor-page .page-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 28px;
+  align-items: center;
+  padding-bottom: 36px;
+  margin-bottom: 36px;
+  border-bottom: 1px solid var(--line);
+}
+.sensor-page .page-head .big-badge {
+  width: 84px; height: 84px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+}
+.sensor-page .page-head .big-badge svg { width: 42px; height: 42px; }
+.sensor-page .page-head .big-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.12), transparent 60%);
+  pointer-events: none;
+}
+.sensor-page .page-head h1 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(40px, 5.5vw, 68px);
+  letter-spacing: -0.03em;
+  margin: 0;
+  line-height: 0.95;
+}
+.sensor-page .page-head h1 .u {
+  font-family: var(--font-mono);
+  font-size: 0.32em;
+  color: var(--ink-mute);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  margin-left: 14px;
+  vertical-align: middle;
+}
+.sensor-page .page-head .sub {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-mute);
+  letter-spacing: 0.06em;
+  margin-top: 10px;
+}
+.sensor-page .page-head .live-big {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 9px 14px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-soft);
+}
+.sensor-page .page-head .live-big .blink {
+  width: 8px; height: 8px;
+  background: var(--warn);
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+.sensor-page .desc-box {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.65;
+  margin-bottom: 28px;
+}
+
+.sensor-page .stats-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.sensor-page .stat-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+}
+.sensor-page .stat-card.current { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.sensor-page .stat-card.current .label { color: rgba(250,248,243,0.55); }
+.sensor-page .stat-card.current .value { color: var(--paper); }
+.sensor-page .stat-card.current .value .u { color: rgba(250,248,243,0.5); }
+.sensor-page .stat-card .label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 10px;
+}
+.sensor-page .stat-card .value {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.025em;
+}
+.sensor-page .stat-card .value .u {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-mute);
+  margin-left: 6px;
+  font-weight: 400;
+}
+.sensor-page .stat-card .trend {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin-top: 8px;
+  color: rgba(250,248,243,0.65);
+}
+
+.sensor-page .chart-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px 28px;
+  position: relative;
+}
+.sensor-page .chart-card .chart-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.sensor-page .chart-card .chart-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  letter-spacing: 0.05em;
+}
+.sensor-page .chart-card .chart-label strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+#sensor-chart { height: 420px !important; }
+
+.sensor-page .footer-meta {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  padding: 0 4px;
+}
+
+/* ═══════════ DASHBOARD IFRAME VIEW ═══════════ */
+.dashview {
+  padding: 44px 0 80px;
+}
+.dashview .view-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 24px;
+  align-items: center;
+  padding-bottom: 28px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.dashview .view-head .mark {
+  width: 64px; height: 64px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+}
+.dashview .view-head .mark.alt { background: var(--accent); }
+.dashview .view-head .mark svg { width: 30px; height: 30px; }
+.dashview .view-head h1 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(32px, 4.2vw, 48px);
+  letter-spacing: -0.025em;
+  margin: 0;
+  line-height: 1;
+}
+.dashview .view-head .sub {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-mute);
+  letter-spacing: 0.05em;
+  margin-top: 8px;
+}
+.dashview .view-head .ext {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.2s;
+}
+.dashview .view-head .ext:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.dashview .view-head .ext svg { width: 12px; height: 12px; }
+
+.dashview .view-head .ext-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: 300px;
+}
+.dashview .view-head .ipad-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-family: var(--font-kr);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 11px;
+  text-align: left;
+  word-break: keep-all;
+}
+.dashview .view-head .ipad-notice b {
+  color: var(--ink);
+  font-weight: 700;
+}
+.dashview .view-head .ipad-notice .ipad-ico {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--accent);
+  margin-top: 1px;
+}
+
+.dashview .frame-wrap {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+}
+.dashview .frame-wrap iframe {
+  display: block;
+  width: 100%;
+  height: 820px;
+  border: 0;
+  background: #ffffff;
+}
+.dashview .frame-wrap .frame-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-mute);
+  transition: opacity 0.3s;
+  z-index: 1;
+}
+.dashview .frame-wrap .frame-loading.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+.dashview .frame-wrap .frame-loading .spin {
+  width: 24px; height: 24px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  margin: 0 auto 14px;
+  animation: spin 0.8s linear infinite;
+}
+
+.dashview .frame-meta {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  padding: 0 6px;
+}
+.dashview .frame-meta code {
+  background: var(--paper);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+/* ═══════════ RESPONSIVE ═══════════ */
+@media (max-width: 960px) {
+  .concepts { grid-template-columns: repeat(2, 1fr); }
+  .dash-banners { grid-template-columns: 1fr; }
+  .sensor-grid { grid-template-columns: repeat(3, 1fr); }
+  .content-grid { grid-template-columns: repeat(3, 1fr); }
+  .dash-stats { grid-template-columns: 1fr 1fr; }
+  .dash-stats .stat { border-right: none; border-bottom: 1px solid var(--line-soft); }
+  .hero-meta { display: none; }
+  footer .foot-wrap { grid-template-columns: 1fr 1fr; }
+  .sensor-page .page-head { grid-template-columns: auto 1fr; }
+  .sensor-page .page-head .live-big { grid-column: 1 / -1; justify-self: start; }
+  .sensor-page .stats-row { grid-template-columns: 1fr 1fr; }
+  #sensor-chart { height: 320px !important; }
+  .dashview .view-head { grid-template-columns: auto 1fr; }
+  .dashview .view-head .ext-group {
+    grid-column: 1 / -1;
+    align-items: flex-start;
+    max-width: 100%;
+  }
+  .dashview .frame-wrap iframe { height: 680px; }
+
+  /* Main section heads stack vertically and keep text left-aligned */
+  .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+  .section-head .desc {
+    max-width: 100%;
+    text-align: left;
+  }
+}
+@media (max-width: 560px) {
+  .concepts { grid-template-columns: 1fr; }
+  .sensor-grid { grid-template-columns: repeat(2, 1fr); }
+  .content-grid { grid-template-columns: repeat(2, 1fr); }
+  .container { padding: 0 20px; }
+
+  /* Header — keep everything on ONE row, menu left-aligned after the logo */
+  nav.top .wrap {
+    padding: 14px 18px;
+    gap: 18px;
+  }
+  nav.top .logo { font-size: 13px; gap: 7px; }
+  nav.top .logo .dot { width: 8px; height: 8px; }
+  nav.top ul {
+    gap: 14px;
+    font-size: 12.5px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  nav.top ul::-webkit-scrollbar { display: none; }
+  nav.top ul a.active::after { bottom: -4px; }
+  nav.top li.has-tip .tip { left: auto; right: 0; transform: translateX(0) translateY(-4px); }
+  nav.top li.has-tip:hover .tip { transform: translateX(0) translateY(0); }
+  nav.top li.has-tip .tip-arrow { left: auto; right: 22px; transform: rotate(45deg); }
+
+  /* Hero typography tightens on narrow screens */
+  .hero { padding: 60px 0 40px; }
+  .hero .eyebrow { font-size: 10px; letter-spacing: 0.12em; }
+  .hero .eyebrow::before { width: 24px; }
+  .hero h2 { font-size: 16px; }
+
+  /* Concept cards — less padding */
+  .concepts { padding: 30px 0 60px; gap: 12px; }
+
+  /* Section blocks — tighter padding & typography */
+  section.block { padding: 50px 0; }
+  .section-head h2 { font-size: 30px; }
+  .section-head .idx {
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    white-space: normal;
+    word-break: keep-all;
+  }
+  .section-head .desc {
+    font-size: 13px;
+    word-break: keep-all;
+    line-height: 1.55;
+  }
+
+  .sensor-page .page-head .big-badge { width: 64px; height: 64px; }
+  .sensor-page .page-head .big-badge svg { width: 32px; height: 32px; }
+}
+</style>
 </head>
+
 <body>
 
-    <header class="top-header">
-        <div class="brand"><i class="fa-solid fa-wave-square"></i><span>DSL 디지털 과학 실험실</span></div>
-        <div class="header-controls">
-            <div class="status-badge" id="connectionStatus"><i class="fa-solid fa-link-slash"></i> 연결 안됨</div>
-            <span style="font-size: 0.9rem; color: #666;"><i class="fa-solid fa-gauge-high"></i> 115200 Baud</span>
-            <button id="btnConnect" class="btn btn-primary"><i class="fa-solid fa-plug"></i> 연결</button>
-            <button id="btnStart" class="btn btn-secondary" disabled><i class="fa-solid fa-play"></i> 시작</button>
-        </div>
-    </header>
+<!-- Header slot: header.html will be injected here -->
+<div id="header-slot"></div>
 
-    <div class="main-container">
-        <div class="left-panel">
-            <div class="card chart-card">
-                <div class="chart-header">
-                    <div class="chart-title"><i class="fa-solid fa-chart-line"></i> 실시간 데이터</div>
-                    <div class="chart-controls">
-                        <div class="control-item">
-                            <span>시간 형식</span>
-                            <select id="timeFormatSelect">
-                                <option value="H_M_S">시:분:초</option>
-                                <option value="H_M_S_MS">시:분:초:밀리초</option>
-                                <option value="M_S">분:초</option>
-                                <option value="M_S_MS">분:초:밀리초</option>
-                                <option value="S_MS">초:밀리초 (경과 시간)</option>
-                            </select>
-                        </div>
-                        <div class="control-item">
-                            <span>X축 줌</span>
-                            <input type="range" id="xRange" min="10" max="500" value="50" style="width:80px;">
-                            <span id="xRangeValue" style="font-weight:bold;">50</span>
-                        </div>
-                        <div class="control-item">
-                            <span>Y축</span>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="yAutoToggle" checked>
-                                <span class="slider"></span>
-                            </label>
-                            <span id="yStatusText">자동</span>
-                        </div>
-                        <div class="control-item y-inputs" id="yManualInputs" style="opacity: 0.3; pointer-events: none;">
-                            <input type="number" id="yMin" placeholder="Min" value="0"> ~ <input type="number" id="yMax" placeholder="Max" value="100">
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="chart-area">
-                    <canvas id="sensorChart"></canvas>
-                    <div id="chartPlaceholder" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#aaa;">시작 버튼을 눌러 데이터 수집을 시작하세요...</div>
-                </div>
+<!-- Main slot: home.html / science.html / simulation.html injected here -->
+<main id="main-slot">
+  <div class="loader"><div class="spin"></div>Loading…</div>
+</main>
 
-                <div class="navigator-container">
-                    <div class="navigator-label">
-                        <span><i class="fa-solid fa-magnifying-glass-chart"></i> 데이터 탐색</span>
-                        <span id="navInfo">실시간 모드</span>
-                    </div>
-                    <input type="range" id="historySlider" class="history-slider" min="0" max="0" value="0" disabled>
-                </div>
-                
-                <div id="sensorLegend" style="display:flex; gap:15px; justify-content:center; margin-top:10px; flex-wrap:wrap; flex-shrink: 0;"></div>
-            </div>
-        </div>
-
-        <div class="right-panel">
-            <div class="info-cards">
-                <div class="info-card">
-                    <div class="info-label">데이터 수</div>
-                    <div class="info-value" id="dataCountDisplay">0</div>
-                </div>
-                <div class="info-card">
-                    <div class="info-label">총 수집 시간</div>
-                    <div class="info-value" id="timerDisplay">00:00:00</div>
-                </div>
-                <div class="info-card">
-                    <div class="info-label">시작/재시작 횟수</div>
-                    <div class="info-value" id="startCountDisplay">0</div>
-                </div>
-            </div>
-
-            <div class="card log-card">
-                <div class="log-header">
-                    <span><i class="fa-solid fa-list-ol"></i> 데이터 로그</span>
-                    <div class="log-tools">
-                        <i class="fa-solid fa-download" id="btnDownload" title="CSV 다운로드" style="color:var(--primary-blue)"></i>
-                        <i class="fa-solid fa-trash-can" id="btnDeleteSelected" title="선택 삭제" style="color:var(--danger-red)"></i>
-                    </div>
-                </div>
-                <div class="table-wrapper">
-                    <table>
-                        <thead id="tableHead">
-                            <tr><th><input type="checkbox" id="checkAll"></th><th>시간</th><th>값</th></tr>
-                        </thead>
-                        <tbody id="tableBody">
-                            <tr><td colspan="3" class="empty-log">기록된 데이터 없음</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="card guide-card">
-                <h4>사용 방법:</h4>
-                <ol>
-                    <li>시간 형식을 선택하여 X축과 로그를 커스텀하세요.</li>
-                    <li>'연결' 후 '시작' 버튼으로 데이터를 수집하세요.</li>
-                    <li><span style="color:#007bff; font-weight:bold;">파란 점</span>: 시작, <span style="color:#dc3545; font-weight:bold;">빨간 점</span>: 정지 지점</li>
-                </ol>
-            </div>
-        </div>
+<!-- Shared footer -->
+<footer>
+  <div class="container">
+    <div class="foot-wrap">
+      <div class="brand">
+        <h4>AI—STEAM</h4>
+        <p class="tag">피지컬 <em>AI</em> 시대의<br>과학 교육 플랫폼</p>
+        <p>센서·데이터·코드로 과학을 가르치고 배우는 새로운 방법.</p>
+      </div>
+      <div>
+        <h4>Explore</h4>
+        <ul>
+          <li data-route="science">과학실험</li>
+          <li data-route="simulation">시뮬레이션</li>
+          <li>대시보드</li>
+          <li>교사용 가이드</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Resources</h4>
+        <ul>
+          <li>Blog</li>
+          <li>Q&amp;A</li>
+          <li>커뮤니티</li>
+          <li>다운로드</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <ul>
+          <li>hello@ai-steam.kr</li>
+          <li>수업 문의</li>
+          <li>교사 네트워크</li>
+        </ul>
+      </div>
     </div>
+    <div class="legal">
+      <div>© 2026 AI-STEAM · MADE FOR EDUCATORS</div>
+      <div>v2026.04 · SEOUL, KR</div>
+    </div>
+  </div>
+</footer>
 
-    <datalist id="sensorTypes">
-        <option value="온도">
-        <option value="습도">
-        <option value="조도">
-        <option value="전압">
-        <option value="전류">
-        <option value="기압">
-        <option value="소리">
-        <option value="거리">
-        <option value="pH">
-    </datalist>
+<script>
+/* ═════════════════════════════════════════════
+   Simple router: loads HTML partials into slots.
+   - header.html is loaded once on boot
+   - main slot is swapped based on hash (#home, #science, #simulation)
+   ═════════════════════════════════════════════ */
 
-    <script>
-        // --- CONSTANTS & Variables ---
-        const MAX_DATA_POINTS = 1500; // 최대 수집 데이터 갯수 제한
-        const THROTTLE_RATE_MS = 150; // 차트 갱신 주기 (성능 최적화)
-        
-        let port, reader, inputDone;
-        let isConnected = false, isCollecting = false;
-        let dataCounter = 0, allData = [], sensorCount = 0;
-        let accumulatedTime = 0, currentSessionStart = 0, timerInterval = null;
-        let isNavigating = false;
-        let sensorNames = []; 
-        let sessionStartTimeAbsolute = 0; 
-        let startCount = 0;
-        let throttleTimer = null; 
+// Load an HTML partial into a target element and re-execute its <script> tags
+async function loadPartial(url, target) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const html = await res.text();
+    target.innerHTML = html;
 
-        // Start/Stop marker flags
-        let shouldMarkStart = false;
+    // Re-execute scripts inside the injected HTML
+    target.querySelectorAll('script').forEach(oldScript => {
+      const s = document.createElement('script');
+      [...oldScript.attributes].forEach(a => s.setAttribute(a.name, a.value));
+      s.textContent = oldScript.textContent;
+      oldScript.replaceWith(s);
+    });
+    return true;
+  } catch (err) {
+    target.innerHTML = `
+      <div class="load-error">
+        <h3>파일을 불러올 수 없습니다</h3>
+        <p><code>${url}</code> 을(를) 가져오는 중 오류가 발생했습니다: <b>${err.message}</b></p>
+        <div class="tip-box">
+          <b>💡 해결 방법</b><br>
+          <code>index.html</code> 을 브라우저에서 바로 열면 보안 정책(CORS)으로 인해 파일이 로드되지 않을 수 있습니다.<br>
+          아래 중 한 가지 방법으로 실행해 주세요:<br><br>
+          • VS Code + <b>Live Server</b> 확장 설치 후 <code>index.html</code> 우클릭 → "Open with Live Server"<br>
+          • 또는 폴더 안에서 터미널 실행 → <code>python -m http.server</code> 후 <code>http://localhost:8000</code> 접속
+        </div>
+      </div>`;
+    return false;
+  }
+}
 
-        const colors = ['#007bff', '#6f42c1', '#28a745', '#dc3545', '#ffc107', '#17a2b8'];
+// Route definitions
+const ROUTES = {
+  home:       'home.html',
+  science:    'science.html',
+  simulation: 'simulation.html',
+  sensor:     'sensor.html',
+  dash:       'dashview.html'
+};
 
-        // Time Format Definitions
-        const TIME_FORMATS = {
-            'H_M_S': { label: '시:분:초', opts: { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false } },
-            'H_M_S_MS': { label: '시:분:초:밀리초', opts: { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3, hour12: false } },
-            'M_S': { label: '분:초', opts: { minute: '2-digit', second: '2-digit' } },
-            'M_S_MS': { label: '분:초:밀리초', opts: { minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 } },
-            'S_MS': { label: '초:밀리초 (경과 시간)', custom: true }
-        };
-        let currentTimeFormat = 'H_M_S';
+// Before loading a new main page, run any cleanup the current page registered
+function runCleanup() {
+  if (typeof window.__pageCleanup === 'function') {
+    try { window.__pageCleanup(); } catch (e) { /* ignore */ }
+  }
+  window.__pageCleanup = null;
+}
 
-        // Unit Mapping
-        const unitMap = {
-            '온도': '°C', '습도': '%', '조도': 'lx', '전압': 'V', '전류': 'A',
-            '기압': 'hPa', '소리': 'dB', '거리': 'cm', 'pH': ''
-        };
+// Load the main content for the current hash
+async function routeMain() {
+  runCleanup();
+  const rawHash = (location.hash || '').replace(/^#/, '') || 'home';
+  const [routeKey, param] = rawHash.split('/');
+  const page = ROUTES[routeKey] || ROUTES.home;
+  // Expose URL param to the loaded page (e.g. sensor key)
+  window.__routeParam = param || null;
 
-        // --- DOM Elements ---
-        const els = {
-            btnConnect: document.getElementById('btnConnect'),
-            btnStart: document.getElementById('btnStart'),
-            status: document.getElementById('connectionStatus'),
-            chartPlaceholder: document.getElementById('chartPlaceholder'),
-            count: document.getElementById('dataCountDisplay'),
-            timer: document.getElementById('timerDisplay'),
-            startCountDisplay: document.getElementById('startCountDisplay'),
-            tableBody: document.getElementById('tableBody'),
-            tableHead: document.getElementById('tableHead'),
-            legend: document.getElementById('sensorLegend'),
-            timeFormatSelect: document.getElementById('timeFormatSelect'),
-            xRange: document.getElementById('xRange'),
-            xVal: document.getElementById('xRangeValue'),
-            slider: document.getElementById('historySlider'),
-            navInfo: document.getElementById('navInfo'),
-            yAuto: document.getElementById('yAutoToggle'),
-            yStatus: document.getElementById('yStatusText'),
-            yInputs: document.getElementById('yManualInputs'),
-            yMin: document.getElementById('yMin'),
-            yMax: document.getElementById('yMax')
-        };
+  const main = document.getElementById('main-slot');
+  main.innerHTML = '<div class="loader"><div class="spin"></div>Loading…</div>';
+  const ok = await loadPartial(page, main);
+  if (ok) main.classList.remove('page-fade'), void main.offsetWidth, main.classList.add('page-fade');
 
-        // --- Time Formatting Function ---
-        function formatTime(date) {
-            if (currentTimeFormat === 'S_MS') {
-                if (sessionStartTimeAbsolute === 0) return '00.000';
-                
-                const elapsedMs = date.getTime() - sessionStartTimeAbsolute;
-                const totalSeconds = Math.floor(elapsedMs / 1000);
-                const ms = elapsedMs % 1000;
-                
-                return `${String(totalSeconds).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
-            }
+  // Update active state in nav. Sensor detail and dashview pages highlight "과학실험".
+  const activeKey = (routeKey === 'sensor' || routeKey === 'dash') ? 'science' : (ROUTES[routeKey] ? routeKey : 'home');
+  document.querySelectorAll('[data-route]').forEach(el => {
+    el.classList.toggle('active', el.dataset.route === activeKey);
+  });
+  // Scroll to top on page change (but not on initial load)
+  if (window.__navigated) window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.__navigated = true;
+}
 
-            const opts = TIME_FORMATS[currentTimeFormat].opts;
-            const timeParts = new Intl.DateTimeFormat('ko-KR', opts).formatToParts(date);
-            
-            let formattedString = '';
-            
-            timeParts.forEach(part => {
-                if (['hour', 'minute', 'second', 'fractionalSecond'].includes(part.type)) {
-                    formattedString += part.value;
-                } else if (part.type === 'literal') {
-                    formattedString += part.value;
-                }
-            });
-            return formattedString.replace(/:\s/g, ':');
-        }
+// Bind navigation clicks after header is loaded
+function bindNav() {
+  document.querySelectorAll('[data-route]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      const route = el.dataset.route;
+      if (!route) return;
+      e.preventDefault();
+      if (location.hash === '#' + route) {
+        // Already on this page — just scroll up
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        location.hash = route;
+      }
+    });
+  });
+}
 
-        // --- Chart Config ---
-        const ctx = document.getElementById('sensorChart').getContext('2d');
-        const chart = new Chart(ctx, {
-            type: 'line',
-            data: { labels: [], datasets: [] },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false,
-                interaction: { mode: 'index', intersect: false },
-                scales: {
-                    x: { 
-                        display: true, 
-                        ticks: { autoSkip: true, maxTicksLimit: 7 }, // Optimized Ticks
-                        grid: { display: false }
-                    },
-                    y: { grid: { color: '#f0f0f0' } }
-                },
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
+// Boot sequence
+(async function init() {
+  const headerSlot = document.getElementById('header-slot');
+  await loadPartial('header.html', headerSlot);
+  bindNav();
+  await routeMain();
+  window.addEventListener('hashchange', routeMain);
+})();
+</script>
 
-        // --- Connection ---
-        els.btnConnect.addEventListener('click', async () => {
-            if (!isConnected) {
-                try {
-                    if (!("serial" in navigator)) return alert("Web Serial 미지원 브라우저입니다.");
-                    port = await navigator.serial.requestPort();
-                    await port.open({ baudRate: 115200 });
-                    
-                    isConnected = true;
-                    els.btnConnect.innerHTML = '<i class="fa-solid fa-link-slash"></i> 연결 해제';
-                    els.btnConnect.classList.replace('btn-primary', 'btn-secondary');
-                    els.btnStart.disabled = false;
-                    els.status.innerHTML = '<i class="fa-solid fa-link"></i> 연결됨';
-                    els.status.classList.add('connected');
-                    
-                    if (sessionStartTimeAbsolute === 0) sessionStartTimeAbsolute = Date.now(); 
-                } catch (e) { console.error(e); alert("연결 실패: " + e.message); }
-            } else {
-                // DISCONNECT Logic: Cancel reader and close port
-                if (reader) { await reader.cancel(); await inputDone.catch(() => {}); reader = null; inputDone = null; }
-                if (port) { await port.close(); port = null; }
-                resetState();
-            }
-        });
-
-        // --- Start/Stop (Optimized Serial Flow) ---
-        els.btnStart.addEventListener('click', async () => {
-            if (!isConnected) return;
-            
-            if (!isCollecting) {
-                // START
-                startCount++;
-                els.startCountDisplay.innerText = startCount;
-                
-                isCollecting = true;
-                els.btnStart.innerHTML = '<i class="fa-solid fa-stop"></i> 정지';
-                els.btnStart.classList.replace('btn-secondary', 'btn-primary');
-                els.chartPlaceholder.style.display = 'none';
-                
-                isNavigating = false;
-                els.slider.disabled = true;
-                els.navInfo.innerText = "데이터 수집 중...";
-                
-                currentSessionStart = Date.now();
-                timerInterval = setInterval(updateTimer, 100);
-                
-                if (allData.length > 0) shouldMarkStart = true; 
-                if (sessionStartTimeAbsolute === 0) sessionStartTimeAbsolute = Date.now();
-
-                // Re-start the reading loop
-                readSerialLoop();
-            } else {
-                // STOP (Pause)
-                isCollecting = false; // CRITICAL: Stop processing immediately
-                els.btnStart.innerHTML = '<i class="fa-solid fa-play"></i> 시작';
-                els.btnStart.classList.replace('btn-primary', 'btn-secondary');
-
-                // *** 수정된 부분: 정지 시 마지막 데이터에 '끝' 표시 (빨간색) ***
-                if (allData.length > 0) {
-                    allData[allData.length - 1].isSessionEnd = true;
-                    if (!isNavigating) updateChartRealtime(); // 즉시 빨간점 표시
-                }
-                
-                // CRITICAL FIX: Stop data reception completely (await required)
-                if (reader) { 
-                    await reader.cancel(); 
-                    await inputDone.catch(() => {}); 
-                    reader = null; 
-                    inputDone = null;
-                }
-                
-                clearInterval(timerInterval);
-                accumulatedTime += (Date.now() - currentSessionStart);
-                
-                enableNavigation();
-            }
-        });
-
-        function resetState() {
-            isConnected = isCollecting = false;
-            els.btnConnect.innerHTML = '<i class="fa-solid fa-plug"></i> 연결';
-            els.btnConnect.classList.replace('btn-secondary', 'btn-primary');
-            els.btnStart.disabled = true;
-            els.btnStart.innerHTML = '<i class="fa-solid fa-play"></i> 시작';
-            els.status.innerHTML = '<i class="fa-solid fa-link-slash"></i> 연결 안됨';
-            els.status.classList.remove('connected');
-            els.chartPlaceholder.style.display = 'block';
-            
-            clearInterval(timerInterval);
-            els.timer.innerText = "00:00:00";
-            accumulatedTime = 0;
-            sessionStartTimeAbsolute = 0;
-            
-            dataCounter = 0; allData = []; sensorCount = 0; sensorNames = [];
-            startCount = 0;
-            shouldMarkStart = false;
-            
-            els.startCountDisplay.innerText = "0"; 
-            els.count.innerText = "0";
-            
-            chart.data.datasets = []; chart.update();
-            
-            els.tableBody.innerHTML = '<tr><td colspan="3" class="empty-log"> 기록된 데이터 없음 </td></tr>';
-            els.legend.innerHTML = '';
-            els.slider.disabled = true; els.slider.value = 0;
-            els.navInfo.innerText = "실시간 모드";
-        }
-
-        function updateTimer() {
-            const t = accumulatedTime + (Date.now() - currentSessionStart);
-            const m = Math.floor(t/60000), s = Math.floor((t%60000)/1000), ms = Math.floor((t%1000)/10);
-            els.timer.innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}:${String(ms).padStart(2,'0')}`;
-        }
-
-        async function readSerialLoop() {
-            const textDecoder = new TextDecoderStream();
-            inputDone = port.readable.pipeTo(textDecoder.writable);
-            reader = textDecoder.readable.getReader();
-            let buffer = "";
-            try {
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-                    if (value) {
-                        buffer += value;
-                        const lines = buffer.split('\n');
-                        buffer = lines.pop();
-                        for (const line of lines) {
-                            if (line.trim() && isCollecting) processData(line.trim());
-                        }
-                    }
-                }
-            } catch (e) { 
-                // Error expected on reader.cancel()
-            } finally { 
-                if (reader) reader.releaseLock();
-            }
-        }
-        
-        // --- PERFORMANCE OPTIMIZATION: Throttling Logic ---
-        function scheduleChartUpdate() {
-            if (throttleTimer) return;
-            throttleTimer = setTimeout(() => {
-                if (!isNavigating) {
-                    updateChartRealtime();
-                }
-                throttleTimer = null;
-            }, THROTTLE_RATE_MS);
-        }
-        // --- END Throttling Logic ---
-
-        function processData(raw) {
-            // CRITICAL FIX: Stop processing immediately upon pause
-            if (!isCollecting) return;
-
-            const vals = raw.split(',').map(v => parseFloat(v.trim()));
-            if (vals.some(isNaN) || vals.length === 0) return;
-
-            if (sensorCount === 0 || sensorCount !== vals.length) {
-                sensorCount = vals.length;
-                initStructure(sensorCount);
-            }
-
-            dataCounter++;
-            const now = new Date();
-            const timeStr = formatTime(now);
-            
-            const rowData = { 
-                id: dataCounter, 
-                time: timeStr, 
-                values: vals, 
-                rawDate: now,
-                // *** 수정된 부분: 시작 지점(파란색) 플래그 설정 ***
-                isSessionStart: shouldMarkStart,
-                isSessionEnd: false
-            };
-            allData.push(rowData);
-
-            if (shouldMarkStart) {
-                shouldMarkStart = false;
-            }
-
-            // CRITICAL FIX: HARD DATA LIMIT (1500)
-            if (allData.length > MAX_DATA_POINTS) {
-                allData.shift(); 
-                if (els.tableBody.lastChild) {
-                    els.tableBody.removeChild(els.tableBody.lastChild); 
-                }
-            }
-
-            els.count.innerText = allData.length;
-            addTableRow(rowData);
-            if (!isNavigating) scheduleChartUpdate(); // Throttled update
-        }
-
-        function initStructure(cnt) {
-            let html = `<tr><th style="width:40px;"><input type="checkbox" id="checkAll"></th><th>시간</th>`;
-            els.legend.innerHTML = '';
-            chart.data.datasets = [];
-            sensorNames = [];
-
-            for(let i=0; i<cnt; i++) {
-                const defName = sensorNames[i] || `센서 ${i+1}`;
-                sensorNames.push(defName);
-                
-                html += `
-                <th>
-                    <input type="text" list="sensorTypes" class="sensor-input" data-index="${i}" 
-                           value="${defName}" onchange="updateSensorMeta(this)" onclick="this.select()">
-                </th>`;
-                
-                const col = colors[i % colors.length];
-                chart.data.datasets.push({
-                    label: defName, data: [],
-                    borderColor: col, backgroundColor: col,
-                    borderWidth: 2, pointRadius: 0, tension: 0.3,
-                    pointRadius: [],
-                    pointBackgroundColor: [],
-                    pointBorderColor: []
-                });
-                
-                updateLegend();
-            }
-            html += `</tr>`;
-            els.tableHead.innerHTML = html;
-            els.tableBody.innerHTML = '';
-
-            document.getElementById('checkAll').addEventListener('change', e => {
-                document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = e.target.checked);
-            });
-        }
-
-        window.updateSensorMeta = function(input) {
-            const idx = parseInt(input.dataset.index);
-            let val = input.value.trim().replace(/\s*\(.*\)/g, '');
-            if(!val) val = `센서 ${idx+1}`;
-            
-            let unit = "";
-            let baseName = val;
-
-            for (const key in unitMap) {
-                if (val.includes(key) && key.length > 1) {
-                    unit = unitMap[key];
-                    break;
-                }
-            }
-            
-            const displayName = unit ? `${baseName} (${unit})` : baseName;
-            
-            sensorNames[idx] = displayName;
-            chart.data.datasets[idx].label = displayName;
-            
-            input.value = displayName;
-            updateLegend();
-            chart.update();
-        }
-
-        function updateLegend() {
-            els.legend.innerHTML = '';
-            sensorNames.forEach((name, i) => {
-                const col = colors[i % colors.length];
-                els.legend.innerHTML += `
-                    <div style="display:flex;align-items:center;gap:5px;font-size:0.9rem;">
-                        <div style="width:10px;height:10px;border-radius:50%;background:${col}"></div> ${name}
-                    </div>`;
-            });
-        }
-
-        function addTableRow(d) {
-            let html = `<td><input type="checkbox" class="row-checkbox" data-id="${d.id}"></td><td>${d.time}</td>`;
-            d.values.forEach(val => html += `<td>${val}</td>`);
-            const tr = document.createElement('tr');
-            tr.innerHTML = html;
-            els.tableBody.prepend(tr);
-        }
-
-        // --- Chart Rendering & Navigation ---
-        function updateChartRealtime() {
-            const win = parseInt(els.xRange.value);
-            const start = Math.max(0, allData.length - win);
-            renderChart(allData.slice(start));
-        }
-
-        function enableNavigation() {
-            isNavigating = true;
-            els.slider.disabled = false;
-            updateSliderRange();
-            els.navInfo.innerText = "슬라이더로 이동하여 탐색";
-        }
-
-        function updateSliderRange() {
-            const win = parseInt(els.xRange.value);
-            const max = Math.max(0, allData.length - win);
-            els.slider.max = max;
-            els.slider.value = max; 
-        }
-
-        els.slider.addEventListener('input', (e) => {
-            if (isCollecting) return;
-            const start = parseInt(e.target.value);
-            const win = parseInt(els.xRange.value);
-            renderChart(allData.slice(start, start + win));
-        });
-
-        function renderChart(viewData) {
-            chart.data.labels = viewData.map(d => d.time);
-
-            for(let i=0; i<sensorCount; i++) {
-                if(chart.data.datasets[i]) {
-                    chart.data.datasets[i].data = viewData.map(d => d.values[i]);
-                    
-                    // *** 수정된 부분: 시작(파랑)/정지(빨강) 점 그리기 로직 ***
-                    chart.data.datasets[i].pointRadius = viewData.map(d => {
-                        if (d.isSessionStart || d.isSessionEnd) return 6; // 시작과 끝점은 크기 6
-                        return 0; // 일반 데이터는 점 없음
-                    });
-                    chart.data.datasets[i].pointBackgroundColor = viewData.map(d => {
-                        if (d.isSessionStart) return '#007bff'; // 시작: 파란색
-                        if (d.isSessionEnd) return '#dc3545';   // 정지: 빨간색
-                        return 'transparent';
-                    });
-                    chart.data.datasets[i].pointBorderColor = viewData.map(d => {
-                        if (d.isSessionStart) return '#007bff';
-                        if (d.isSessionEnd) return '#dc3545';
-                        return 'transparent';
-                    });
-                }
-            }
-            chart.update('none');
-        }
-
-        // --- Time Format Switcher Handler ---
-        function handleTimeFormatChange() {
-            const newFormat = els.timeFormatSelect.value;
-            if (newFormat === currentTimeFormat) return;
-            
-            currentTimeFormat = newFormat;
-
-            // All Data Time Strings must be RE-FORMATTED using the stored rawDate
-            allData.forEach(row => {
-                row.time = formatTime(row.rawDate);
-            });
-            
-            renderTableAll(); 
-            if (!isNavigating) updateChartRealtime();
-            else els.slider.dispatchEvent(new Event('input'));
-        }
-        
-        // Event Listeners for Time and Y-Axis
-        els.timeFormatSelect.addEventListener('change', handleTimeFormatChange);
-        els.yAuto.addEventListener('change', updateYAxis);
-        els.yMin.addEventListener('change', updateYAxis);
-        els.yMax.addEventListener('change', updateYAxis);
-        els.xRange.addEventListener('input', (e) => {
-            els.xVal.innerText = e.target.value;
-            if (isCollecting) updateChartRealtime();
-            else { updateSliderRange(); els.slider.dispatchEvent(new Event('input')); }
-        });
-
-        function updateYAxis() {
-            if(els.yAuto.checked) {
-                els.yStatus.innerText = "자동"; els.yInputs.style.opacity = '0.3'; els.yInputs.style.pointerEvents = 'none';
-                chart.options.scales.y.min = null; chart.options.scales.y.max = null;
-            } else {
-                els.yStatus.innerText = "수동"; els.yInputs.style.opacity = '1'; els.yInputs.style.pointerEvents = 'auto';
-                const min = parseFloat(els.yMin.value), max = parseFloat(els.yMax.value);
-                if(!isNaN(min)) chart.options.scales.y.min = min;
-                if(!isNaN(max)) chart.options.scales.y.max = max;
-            }
-            chart.update();
-        }
-
-        // Download & Delete Logic
-        document.getElementById('btnDownload').addEventListener('click', () => {
-            if (allData.length === 0) return alert("데이터 없음");
-            let csv = "ID,Time," + sensorNames.join(',') + "\r\n";
-            allData.forEach(d => csv += `${d.id},${d.time},${d.values.join(',')}\r\n`);
-            const link = document.createElement("a");
-            link.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
-            link.download = `DSL_Data_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
-            link.click();
-        });
-
-        document.getElementById('btnDeleteSelected').addEventListener('click', () => {
-            const chk = document.querySelectorAll('.row-checkbox:checked');
-            if(chk.length === 0) return alert("선택된 항목 없음");
-            if(!confirm("삭제하시겠습니까?")) return;
-            const ids = Array.from(chk).map(c => parseInt(c.dataset.id));
-            allData = allData.filter(d => !ids.includes(d.id));
-            renderTableAll();
-            if(!isCollecting) { updateSliderRange(); els.slider.dispatchEvent(new Event('input')); }
-            else updateChartRealtime();
-            els.count.innerText = allData.length;
-            document.getElementById('checkAll').checked = false;
-        });
-
-        function renderTableAll() {
-            els.tableBody.innerHTML = '';
-            if(allData.length === 0) els.tableBody.innerHTML = '<tr><td colspan="3" class="empty-log">기록된 데이터 없음</td></tr>';
-            [...allData].forEach(d => addTableRow(d));
-        }
-
-        updateYAxis(); // Initial call
-    </script>
 </body>
 </html>
