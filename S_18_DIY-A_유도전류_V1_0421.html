@@ -1256,6 +1256,7 @@ function mkSVG(i){
 
 function renderThermos(target){
   const g=target||document.getElementById('tg');
+  detachDrags(g);
   g.innerHTML='';
   g.style.display='flex';
   g.style.flexWrap='wrap';
@@ -1277,6 +1278,18 @@ function renderThermos(target){
   }
   attachDrags(g);
   for(let i=0;i<N;i++) updAuxUI(i);
+}
+
+function detachDrags(g){
+  if(!g)return;
+  for(let i=0;i<4;i++){
+    const sv=g.querySelector(`#sv${i}`);
+    if(!sv)continue;
+    if(sv._mm)window.removeEventListener('mousemove',sv._mm);
+    if(sv._tm)window.removeEventListener('touchmove',sv._tm);
+    if(sv._mu)window.removeEventListener('mouseup',sv._mu);
+    if(sv._tu)window.removeEventListener('touchend',sv._tu);
+  }
 }
 
 function attachDrags(g){
@@ -2197,10 +2210,10 @@ function calcFSSizes(){
     c.style.overflow   = 'hidden';
     c.style.justifyContent = 'space-between';
   });
-  g.querySelectorAll('.tcv').forEach(v=>{ v.style.fontSize=numFS+'px'; });
-  g.querySelectorAll('.tcu').forEach(u=>{ u.style.fontSize='11px'; });
+  g.querySelectorAll('.v-num').forEach(v=>{ v.style.fontSize=numFS+'px'; });
+  g.querySelectorAll('.v-unit').forEach(u=>{ u.style.fontSize='11px'; });
   g.querySelectorAll('.tcn').forEach(n=>{ n.style.fontSize='11px'; });
-  g.querySelectorAll('.tcv-wrap').forEach(w=>{ w.style.padding='3px 2px'; w.style.marginBottom='4px'; });
+  g.querySelectorAll('.value-box').forEach(w=>{ w.style.padding='3px 2px'; w.style.marginBottom='4px'; });
   g.querySelectorAll('.tcsvg').forEach(w=>{ w.style.flex='1'; w.style.display='flex'; w.style.alignItems='center'; w.style.justifyContent='center'; });
   g.querySelectorAll('.tc-aux').forEach(w=>{ w.style.marginTop='4px'; });
   // SVG 온도계 크기 조정

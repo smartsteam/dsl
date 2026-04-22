@@ -1161,6 +1161,7 @@ function mkSVG(i){
 
 function renderThermos(target){
   const g=target||document.getElementById('tg');
+  detachDrags(g);
   g.innerHTML='';
   g.style.display='flex';
   g.style.flexWrap='wrap';
@@ -1233,6 +1234,18 @@ function animateIons() {
         });
     }
     requestAnimationFrame(animateIons);
+}
+
+function detachDrags(g){
+  if(!g)return;
+  for(let i=0;i<4;i++){
+    const sv=g.querySelector(`#sv${i}`);
+    if(!sv)continue;
+    if(sv._mm)window.removeEventListener('mousemove',sv._mm);
+    if(sv._tm)window.removeEventListener('touchmove',sv._tm);
+    if(sv._mu)window.removeEventListener('mouseup',sv._mu);
+    if(sv._tu)window.removeEventListener('touchend',sv._tu);
+  }
 }
 
 function attachDrags(g){
