@@ -1,0 +1,75 @@
+<section class="dashview">
+  <div class="container">
+    <!-- Page header -->
+    <div class="view-head">
+      <div class="mark alt" id="mbMark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="6" width="20" height="12" rx="3"/>
+          <circle cx="8" cy="12" r="1.4" fill="currentColor"/>
+          <circle cx="16" cy="12" r="1.4" fill="currentColor"/>
+          <path d="M6 10 H7 M17 10 H18"/>
+        </svg>
+      </div>
+      <div>
+        <h1 id="mbTitle">마이크로비트 연동 대시보드</h1>
+        <div class="sub" id="mbSub">MICRO:BIT DASHBOARD · Web Bluetooth 실시간 연동</div>
+      </div>
+      <div class="ext-group">
+        <a href="05_마이크로비트_단순표시.html" id="mbExtLink" target="_blank" rel="noopener" class="ext" title="새 탭에서 열기">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 3 H3 V11 H11 V9 M7 3 H11 V7 M11 3 L6 8"/>
+          </svg>
+          새 탭으로 열기
+        </a>
+        <div class="ipad-notice">
+          <svg class="ipad-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="1.5" width="10" height="13" rx="1.5"/>
+            <path d="M7 12 H9"/>
+          </svg>
+          <span>아이패드는 <b>Bluefy</b> 앱을 통해 접속 후 <b>새 탭으로 열기</b>를 통해 대시보드를 실행해 주세요</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Iframe -->
+    <div class="frame-wrap">
+      <div class="frame-loading" id="mbLoading">
+        <div>
+          <div class="spin"></div>
+          Loading micro:bit dashboard…
+        </div>
+      </div>
+      <iframe id="mbFrame" title="Micro:bit Dashboard" src="about:blank" allow="bluetooth; serial"></iframe>
+    </div>
+
+    <div class="frame-meta">
+      <div>SOURCE · <code id="mbSource">05_마이크로비트_단순표시.html</code></div>
+      <div>EMBEDDED · RENDERED INLINE</div>
+    </div>
+  </div>
+</section>
+
+<script>
+(function() {
+  const FILE = '05_마이크로비트_단순표시.html';
+
+  const iframe = document.getElementById('mbFrame');
+  const loading = document.getElementById('mbLoading');
+
+  iframe.addEventListener('load', () => {
+    if (iframe.src && !iframe.src.endsWith('about:blank')) {
+      loading.classList.add('hide');
+    }
+  });
+
+  // Safety net — hide loader after 4s regardless
+  setTimeout(() => loading.classList.add('hide'), 4000);
+
+  iframe.src = FILE;
+
+  // Cleanup on navigation away
+  window.__pageCleanup = function() {
+    try { iframe.src = 'about:blank'; } catch (e) {}
+  };
+})();
+</script>
