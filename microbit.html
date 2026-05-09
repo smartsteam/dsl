@@ -62,17 +62,18 @@
 
 .microbit-page .mb-row {
   background: var(--paper);
-  border: 1.5px solid var(--ink);
-  border-radius: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
   padding: 20px 28px;
   display: grid;
   grid-template-columns: minmax(130px, 180px) 1fr;
   align-items: center;
   gap: 22px;
-  transition: box-shadow 0.22s;
+  transition: border-color 0.22s, box-shadow 0.22s;
 }
 .microbit-page .mb-row:hover {
-  box-shadow: 0 6px 20px rgba(22,22,19,0.06);
+  border-color: var(--ink-mute);
+  box-shadow: 0 4px 14px rgba(22,22,19,0.04);
 }
 
 .microbit-page .mb-row.placeholder {
@@ -80,7 +81,10 @@
   border-color: var(--line);
   background: transparent;
 }
-.microbit-page .mb-row.placeholder:hover { box-shadow: none; }
+.microbit-page .mb-row.placeholder:hover {
+  border-color: var(--line);
+  box-shadow: none;
+}
 
 .microbit-page .mb-row-label {
   font-family: var(--font-kr);
@@ -113,8 +117,8 @@
 }
 .microbit-page .mb-btn {
   background: var(--paper);
-  border: 1.5px solid var(--ink);
-  border-radius: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
   padding: 14px 10px;
   min-height: 78px;
   display: flex;
@@ -133,19 +137,21 @@
   line-height: 1.35;
   word-break: keep-all;
 }
+.microbit-page .mb-btn:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(22,22,19,0.12);
+}
 .microbit-page .mb-btn.mb-btn-hex {
   background: var(--accent-soft);
+  border-color: #c4cbf5;
 }
 .microbit-page .mb-btn.mb-btn-hex:hover {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--paper);
-}
-.microbit-page .mb-btn:hover {
-  background: var(--ink);
-  color: var(--paper);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(22,22,19,0.18);
 }
 .microbit-page .mb-btn .mb-btn-ico {
   width: 18px;
