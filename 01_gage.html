@@ -387,6 +387,49 @@ td.tv{font-size:15px;font-weight:900}
   pointer-events:none;z-index:3;display:none;
 }
 .live-tan-svg.show{display:block}
+/* 이중 핸들 범위 슬라이더 (시간 탐색용) */
+.range-slider{
+  position:relative;flex:1;min-width:120px;height:24px;
+  cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;
+}
+.range-slider .rs-track{
+  position:absolute;left:9px;right:9px;top:50%;height:5px;
+  background:#dde3f3;transform:translateY(-50%);
+  border-radius:3px;z-index:0;
+}
+.range-slider .rs-bar{
+  position:absolute;top:50%;height:9px;
+  background:linear-gradient(90deg,var(--acc),var(--grn));
+  transform:translateY(-50%);border-radius:5px;
+  cursor:grab;z-index:1;
+  box-shadow:0 1px 5px rgba(79,126,248,0.25);
+}
+.range-slider.dragging .rs-bar{cursor:grabbing}
+.range-slider .rs-thumb{
+  position:absolute;top:50%;width:18px;height:18px;
+  background:var(--surface);border:2.5px solid var(--acc);
+  border-radius:50%;transform:translate(-50%,-50%);
+  cursor:ew-resize;z-index:2;
+  box-shadow:0 2px 6px rgba(0,0,0,0.12);
+  transition:transform .12s,background .15s,box-shadow .15s;
+}
+.range-slider .rs-thumb:hover,
+.range-slider .rs-thumb.dragging{
+  background:var(--acc);
+  transform:translate(-50%,-50%) scale(1.18);
+  box-shadow:0 3px 9px rgba(79,126,248,0.4);
+}
+.range-slider .rs-thumb.rs-right{border-color:var(--grn)}
+.range-slider .rs-thumb.rs-right:hover,
+.range-slider .rs-thumb.rs-right.dragging{
+  background:var(--grn);
+  box-shadow:0 3px 9px rgba(45,190,120,0.4);
+}
+.range-slider.disabled{opacity:0.4;pointer-events:none}
+.range-slider.disabled .rs-thumb,
+.range-slider.disabled .rs-bar{cursor:default}
+/* 정보 영역 폭 확장 (총개수 + 범위 같이 표시) */
+.live-scroll-bar .ls-info{min-width:170px}
 /* 시간 탐색 슬라이더 */
 .live-scroll-bar{
   display:flex;align-items:center;gap:8px;
@@ -1081,10 +1124,15 @@ td.tv{font-size:15px;font-weight:900}
           <!-- 시간 탐색 슬라이더 -->
           <div class="live-scroll-bar" id="live-scroll-bar">
             <span class="ls-lbl">⏪ 탐색</span>
-            <input type="range" id="live-scroll" min="0" max="0" value="0" step="1"
-              oninput="setLiveScroll(this.value)" disabled>
-            <span class="ls-info live" id="live-scroll-info">최신</span>
-            <button class="ls-btn live" id="live-scroll-latest" onclick="goLiveLatest()" title="최신 위치로 이동">⏭ 최신으로</button>
+            <div class="range-slider disabled" id="live-rs">
+              <div class="rs-track"></div>
+              <div class="rs-bar" id="live-rs-bar" title="가운데 막대를 잡고 드래그하면 구간이 함께 이동돼요"></div>
+              <div class="rs-thumb rs-left" id="live-rs-left" title="시작 위치 (드래그)"></div>
+              <div class="rs-thumb rs-right" id="live-rs-right" title="끝 위치 (드래그)"></div>
+            </div>
+            <span class="ls-info" id="live-scroll-info">대기 중</span>
+            <button class="ls-btn" onclick="liveRSAll()" title="탐색 가능 범위 전체 보기">⊞ 전체</button>
+            <button class="ls-btn live" id="live-scroll-latest" onclick="goLiveLatest()" title="현재 창 크기 유지하며 최신으로 이동">⏭ 최신</button>
           </div>
         </div>
 
@@ -1169,10 +1217,15 @@ td.tv{font-size:15px;font-weight:900}
           </div>
           <div class="live-scroll-bar" id="obs-scroll-bar">
             <span class="ls-lbl">⏪ 탐색</span>
-            <input type="range" id="obs-scroll" min="0" max="0" value="0" step="1"
-              oninput="setObsScroll(this.value)" disabled>
-            <span class="ls-info live" id="obs-scroll-info">최신</span>
-            <button class="ls-btn live" id="obs-scroll-latest" onclick="goObsLatest()" title="최신 기록 위치로 이동">⏭ 최신으로</button>
+            <div class="range-slider disabled" id="obs-rs">
+              <div class="rs-track"></div>
+              <div class="rs-bar" id="obs-rs-bar" title="가운데 막대를 잡고 드래그하면 구간이 함께 이동돼요"></div>
+              <div class="rs-thumb rs-left" id="obs-rs-left" title="시작 위치 (드래그)"></div>
+              <div class="rs-thumb rs-right" id="obs-rs-right" title="끝 위치 (드래그)"></div>
+            </div>
+            <span class="ls-info" id="obs-scroll-info">대기 중</span>
+            <button class="ls-btn" onclick="obsRSAll()" title="탐색 가능 범위 전체 보기">⊞ 전체</button>
+            <button class="ls-btn live" id="obs-scroll-latest" onclick="goObsLatest()" title="현재 창 크기 유지하며 최신 기록 위치로 이동">⏭ 최신</button>
           </div>
         </div>
 
@@ -2354,7 +2407,7 @@ if (window.ezonBle?.install) {
   window.ezonBle.install();
   console.log('[BLE] EZON SDK install() 호출 완료');
 }
-const LBUF=300, TTOP=10, TBOT=210, TH=200;
+const LBUF=3000, TTOP=10, TBOT=210, TH=200;  // LIVE_NAV_MAX와 일치
 
 // ════════════ 상태 ════════════
 let N=1, TVals=[25,25,25,25], rMin=-10, rMax=60, unit='C';
@@ -5530,65 +5583,232 @@ if(document.readyState === 'loading'){
 }
 
 // ════════════ 시간 탐색 슬라이더 ════════════
-function setLiveScroll(v){
-  v = parseInt(v); if(isNaN(v)) v = 0;
-  const total = liveBuf.length;
-  const navMin = Math.max(0, total - LIVE_NAV_MAX);
-  const maxStart = Math.max(0, total - liveWin);
-  if(v >= maxStart){
-    // 슬라이더가 최우측이면 라이브(최신 추종) 모드
-    liveStartIdx = null;
-  } else {
-    liveStartIdx = Math.max(navMin, v);
+// ── 이중 핸들 범위 슬라이더 공통 셋업 ──
+function _setupRS(opts){
+  const cont = document.getElementById(opts.containerId);
+  if(!cont) return null;
+  const lt = cont.querySelector('.rs-left');
+  const rt = cont.querySelector('.rs-right');
+  const bar = cont.querySelector('.rs-bar');
+  if(!lt || !rt || !bar) return null;
+
+  let drag = null;
+  const _xy = e => {
+    const cx = (e.touches && e.touches[0]) ? e.touches[0].clientX
+             : (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX
+             : e.clientX;
+    const rect = cont.getBoundingClientRect();
+    return cx - rect.left;
+  };
+  function startDrag(mode){
+    return e => {
+      const [min, max] = opts.getMinMax();
+      if(max <= min) return;
+      const [st, en] = opts.getRange();
+      drag = { mode, sx: _xy(e), st, en, min, max };
+      cont.classList.add('dragging');
+      if(mode === 'left') lt.classList.add('dragging');
+      else if(mode === 'right') rt.classList.add('dragging');
+      if(e.cancelable) e.preventDefault();
+      e.stopPropagation();
+    };
   }
+  function moveDrag(e){
+    if(!drag) return;
+    const x = _xy(e);
+    const w = cont.clientWidth;
+    const range = drag.max - drag.min;
+    if(range <= 0 || w <= 0) return;
+    const dIdx = Math.round(((x - drag.sx) / w) * range);
+    let newSt = drag.st, newEn = drag.en;
+    if(drag.mode === 'left'){
+      newSt = Math.max(drag.min, Math.min(drag.en, drag.st + dIdx));
+    } else if(drag.mode === 'right'){
+      newEn = Math.max(drag.st, Math.min(drag.max, drag.en + dIdx));
+    } else if(drag.mode === 'bar'){
+      const sz = drag.en - drag.st;
+      newSt = Math.max(drag.min, Math.min(drag.max - sz, drag.st + dIdx));
+      newEn = newSt + sz;
+    }
+    opts.setRange(newSt, newEn, drag.mode);
+    if(e.cancelable) e.preventDefault();
+  }
+  function endDrag(){
+    if(!drag) return;
+    cont.classList.remove('dragging');
+    lt.classList.remove('dragging');
+    rt.classList.remove('dragging');
+    drag = null;
+  }
+  // 트랙 클릭: 가까운 핸들 점프
+  function trackClick(e){
+    if(drag) return;
+    if(e.target === lt || e.target === rt || e.target === bar) return;
+    const x = _xy(e);
+    const w = cont.clientWidth;
+    const [min, max] = opts.getMinMax();
+    if(max <= min || w <= 0) return;
+    const idx = Math.round(min + (x / w) * (max - min));
+    const [st, en] = opts.getRange();
+    if(Math.abs(idx - st) <= Math.abs(idx - en)){
+      opts.setRange(Math.max(min, Math.min(en, idx)), en, 'left');
+    } else {
+      opts.setRange(st, Math.max(st, Math.min(max, idx)), 'right');
+    }
+  }
+
+  lt.addEventListener('mousedown', startDrag('left'));
+  rt.addEventListener('mousedown', startDrag('right'));
+  bar.addEventListener('mousedown', startDrag('bar'));
+  lt.addEventListener('touchstart', startDrag('left'), {passive:false});
+  rt.addEventListener('touchstart', startDrag('right'), {passive:false});
+  bar.addEventListener('touchstart', startDrag('bar'), {passive:false});
+  cont.addEventListener('mousedown', trackClick);
+  window.addEventListener('mousemove', moveDrag);
+  window.addEventListener('touchmove', moveDrag, {passive:false});
+  window.addEventListener('mouseup', endDrag);
+  window.addEventListener('touchend', endDrag);
+  window.addEventListener('touchcancel', endDrag);
+
+  return {
+    update(){
+      const [min, max] = opts.getMinMax();
+      const range = max - min;
+      if(range <= 0){
+        cont.classList.add('disabled');
+        lt.style.left = '0%'; rt.style.left = '100%';
+        bar.style.left = '0%'; bar.style.width = '100%';
+        return;
+      }
+      cont.classList.remove('disabled');
+      const [st, en] = opts.getRange();
+      const lpct = ((st - min) / range) * 100;
+      const rpct = ((en - min) / range) * 100;
+      lt.style.left = lpct + '%';
+      rt.style.left = rpct + '%';
+      bar.style.left = lpct + '%';
+      bar.style.width = Math.max(0, rpct - lpct) + '%';
+    }
+  };
+}
+
+// ── Live 그래프 범위 슬라이더 ──
+let liveRS = null;
+function _setupLiveRS(){
+  liveRS = _setupRS({
+    containerId: 'live-rs',
+    getMinMax(){
+      const total = liveBuf.length;
+      if(total === 0) return [0, 0];
+      return [Math.max(0, total - LIVE_NAV_MAX), total - 1];
+    },
+    getRange(){
+      const total = liveBuf.length;
+      if(total === 0) return [0, 0];
+      const navMin = Math.max(0, total - LIVE_NAV_MAX);
+      if(liveStartIdx === null){
+        const st = Math.max(navMin, total - liveWin);
+        return [st, total - 1];
+      }
+      const st = Math.max(navMin, Math.min(total - 1, liveStartIdx));
+      const en = Math.max(st, Math.min(total - 1, st + liveWin - 1));
+      return [st, en];
+    },
+    setRange(st, en, mode){
+      const total = liveBuf.length;
+      if(total === 0) return;
+      const navMin = Math.max(0, total - LIVE_NAV_MAX);
+      st = Math.max(navMin, Math.min(total - 1, st));
+      en = Math.max(st, Math.min(total - 1, en));
+      const newWin = en - st + 1;
+      if(en >= total - 1){
+        // 우측이 최신에 닿으면 라이브 모드
+        liveStartIdx = null;
+        liveWin = newWin;
+      } else {
+        liveStartIdx = st;
+        liveWin = newWin;
+      }
+      // X축 슬라이더 동기화 (가능한 범위 내)
+      const xSlider = document.getElementById('live-zoom');
+      if(xSlider){
+        const xMin = parseInt(xSlider.min) || 10;
+        const xMax = parseInt(xSlider.max) || 500;
+        const cw = Math.max(xMin, Math.min(xMax, newWin));
+        if(parseInt(xSlider.value) !== cw){
+          xSlider.value = cw;
+          const lbl = document.getElementById('live-zoom-val');
+          if(lbl) lbl.textContent = cw;
+        }
+      }
+      _liveNeedsUpdate = true;
+      flushLiveChart();
+      _updateLiveScrollUI();
+    }
+  });
+}
+// "전체" 버튼: 탐색 가능 범위 전체 표시 (최근 LIVE_NAV_MAX개까지)
+function liveRSAll(){
+  const total = liveBuf.length;
+  if(total === 0) return;
+  const navMin = Math.max(0, total - LIVE_NAV_MAX);
+  liveStartIdx = null; // 우측이 최신 → 라이브 모드
+  liveWin = total - navMin;
+  // X축 슬라이더는 그대로 (실제 표시는 liveWin로 결정)
   _liveNeedsUpdate = true;
   flushLiveChart();
   _updateLiveScrollUI();
 }
+// "최신으로" 버튼: 현재 창 크기 유지하며 최신으로 이동
 function goLiveLatest(){
   liveStartIdx = null;
   _liveNeedsUpdate = true;
   flushLiveChart();
   _updateLiveScrollUI();
 }
-function _updateLiveScrollUI(){
-  const sl = document.getElementById('live-scroll');
-  const info = document.getElementById('live-scroll-info');
-  const btn = document.getElementById('live-scroll-latest');
-  if(!sl || !info) return;
-  const total = liveBuf.length;
+// 호환용 (혹시 다른 코드가 호출할 경우 대비)
+function setLiveScroll(v){
+  v = parseInt(v); if(isNaN(v)) return;
+  const total = liveBuf.length; if(total === 0) return;
   const navMin = Math.max(0, total - LIVE_NAV_MAX);
   const maxStart = Math.max(0, total - liveWin);
-  // 탐색 가능 영역이 있어야 슬라이더 활성
-  const hasOverflow = maxStart > navMin;
-  sl.disabled = !hasOverflow;
-  sl.min = navMin;
-  sl.max = maxStart;
+  if(v >= maxStart) liveStartIdx = null;
+  else liveStartIdx = Math.max(navMin, v);
+  _liveNeedsUpdate = true; flushLiveChart(); _updateLiveScrollUI();
+}
+
+function _updateLiveScrollUI(){
+  const total = liveBuf.length;
+  const info = document.getElementById('live-scroll-info');
+  const btn = document.getElementById('live-scroll-latest');
+  if(!info || !btn){ if(liveRS) liveRS.update(); return; }
+  const navMin = Math.max(0, total - LIVE_NAV_MAX);
   const limited = total > LIVE_NAV_MAX;
-  if(liveStartIdx === null){
-    // 라이브: 슬라이더는 우측 끝
-    sl.value = maxStart;
-    info.classList.add('live');
-    if(total > 0){
-      const winStart = Math.max(1, total - liveWin + 1);
-      info.textContent = limited
-        ? `최신 (${winStart}~${total}) · 탐색: 최근 ${LIVE_NAV_MAX}개`
-        : `최신 (${winStart}~${total})`;
-    } else {
-      info.textContent = '대기 중';
-    }
-    if(btn){ btn.classList.add('live'); btn.disabled = true; }
-  } else {
-    const s = Math.max(navMin, Math.min(maxStart, liveStartIdx));
-    sl.value = s;
+  const isLive = liveStartIdx === null;
+
+  if(total === 0){
+    info.textContent = '대기 중';
     info.classList.remove('live');
-    const showStart = s + 1;
-    const showEnd = Math.min(total, s + liveWin);
-    info.textContent = limited
-      ? `${showStart}~${showEnd} / 최근 ${LIVE_NAV_MAX}개 (전체 ${total})`
-      : `${showStart}~${showEnd} / ${total}`;
-    if(btn){ btn.classList.remove('live'); btn.disabled = false; }
+    btn.classList.add('live'); btn.disabled = true;
+  } else {
+    const st = isLive ? Math.max(navMin, total - liveWin)
+                      : Math.max(navMin, Math.min(total - 1, liveStartIdx));
+    const en = isLive ? total - 1 : Math.min(total - 1, st + liveWin - 1);
+    const sz = en - st + 1;
+    info.classList.toggle('live', isLive);
+    let txt = `전체 ${total}개 · 표시 ${st+1}~${en+1} (${sz}개)`;
+    if(limited && st === navMin) txt += ` · 최근 ${LIVE_NAV_MAX}개`;
+    info.textContent = txt;
+    btn.classList.toggle('live', isLive);
+    btn.disabled = isLive;
   }
+  if(liveRS) liveRS.update();
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(_setupLiveRS, 200));
+} else {
+  setTimeout(_setupLiveRS, 200);
 }
 // pushLiveBuf에 훅을 걸어 새 데이터마다 슬라이더 갱신
 const _origPushLiveBufForScroll = pushLiveBuf;
@@ -6318,56 +6538,115 @@ function _setupObsSel(){
 }
 
 // ── 시간 탐색 슬라이더 ──
-function setObsScroll(v){
-  v = parseInt(v); if(isNaN(v)) v = 0;
+// ── 수집 그래프 범위 슬라이더 ──
+let obsRS = null;
+function _setupObsRS(){
+  obsRS = _setupRS({
+    containerId: 'obs-rs',
+    getMinMax(){
+      const total = recs.length;
+      if(total === 0) return [0, 0];
+      return [Math.max(0, total - LIVE_NAV_MAX), total - 1];
+    },
+    getRange(){
+      const total = recs.length;
+      if(total === 0) return [0, 0];
+      const navMin = Math.max(0, total - LIVE_NAV_MAX);
+      if(obsStartIdx === null){
+        const st = Math.max(navMin, total - obsZoom);
+        return [st, total - 1];
+      }
+      const st = Math.max(navMin, Math.min(total - 1, obsStartIdx));
+      const en = Math.max(st, Math.min(total - 1, st + obsZoom - 1));
+      return [st, en];
+    },
+    setRange(st, en, mode){
+      const total = recs.length;
+      if(total === 0) return;
+      const navMin = Math.max(0, total - LIVE_NAV_MAX);
+      st = Math.max(navMin, Math.min(total - 1, st));
+      en = Math.max(st, Math.min(total - 1, en));
+      const newWin = en - st + 1;
+      if(en >= total - 1){
+        obsStartIdx = null;
+        obsZoom = newWin;
+      } else {
+        obsStartIdx = st;
+        obsZoom = newWin;
+      }
+      // X축 슬라이더 동기화 (가능한 범위 내)
+      const xSlider = document.getElementById('obs-zoom');
+      if(xSlider){
+        const xMin = parseInt(xSlider.min) || 10;
+        const xMax = parseInt(xSlider.max) || 500;
+        const cw = Math.max(xMin, Math.min(xMax, newWin));
+        if(parseInt(xSlider.value) !== cw){
+          xSlider.value = cw;
+          const lbl = document.getElementById('obs-zoom-val');
+          if(lbl) lbl.textContent = cw;
+        }
+      }
+      updChart();
+    }
+  });
+}
+function obsRSAll(){
   const total = recs.length;
+  if(total === 0) return;
   const navMin = Math.max(0, total - LIVE_NAV_MAX);
-  const maxStart = Math.max(0, total - obsZoom);
-  if(v >= maxStart){ obsStartIdx = null; }
-  else { obsStartIdx = Math.max(navMin, v); }
+  obsStartIdx = null;
+  obsZoom = total - navMin;
   updChart();
 }
 function goObsLatest(){
   obsStartIdx = null;
   updChart();
 }
-function _updateObsScrollUI(){
-  const sl = document.getElementById('obs-scroll');
-  const info = document.getElementById('obs-scroll-info');
-  const btn = document.getElementById('obs-scroll-latest');
-  if(!sl || !info) return;
-  const total = recs.length;
+// 호환용
+function setObsScroll(v){
+  v = parseInt(v); if(isNaN(v)) return;
+  const total = recs.length; if(total === 0) return;
   const navMin = Math.max(0, total - LIVE_NAV_MAX);
   const maxStart = Math.max(0, total - obsZoom);
-  const hasOverflow = maxStart > navMin;
-  sl.disabled = !hasOverflow;
-  sl.min = navMin;
-  sl.max = maxStart;
+  if(v >= maxStart) obsStartIdx = null;
+  else obsStartIdx = Math.max(navMin, v);
+  updChart();
+}
+
+function _updateObsScrollUI(){
+  const total = recs.length;
+  const info = document.getElementById('obs-scroll-info');
+  const btn = document.getElementById('obs-scroll-latest');
+  if(!info || !btn){ if(obsRS) obsRS.update(); return; }
+  const navMin = Math.max(0, total - LIVE_NAV_MAX);
   const limited = total > LIVE_NAV_MAX;
-  if(obsStartIdx === null){
-    sl.value = maxStart;
-    info.classList.add('live');
-    if(total > 0){
-      const startId = recs[Math.max(0, total-obsZoom)].id;
-      const endId = recs[total-1].id;
-      info.textContent = limited
-        ? `최신 (#${startId}~#${endId}) · 탐색: 최근 ${LIVE_NAV_MAX}개`
-        : `최신 (#${startId}~#${endId})`;
-    } else {
-      info.textContent = '대기 중';
-    }
-    if(btn){ btn.classList.add('live'); btn.disabled = true; }
-  } else {
-    const s = Math.max(navMin, Math.min(maxStart, obsStartIdx));
-    sl.value = s;
+  const isLive = obsStartIdx === null;
+
+  if(total === 0){
+    info.textContent = '대기 중';
     info.classList.remove('live');
-    const showStart = s + 1;
-    const showEnd = Math.min(total, s + obsZoom);
-    info.textContent = limited
-      ? `${showStart}~${showEnd} / 최근 ${LIVE_NAV_MAX}개 (전체 ${total})`
-      : `${showStart}~${showEnd} / ${total}`;
-    if(btn){ btn.classList.remove('live'); btn.disabled = false; }
+    btn.classList.add('live'); btn.disabled = true;
+  } else {
+    const st = isLive ? Math.max(navMin, total - obsZoom)
+                      : Math.max(navMin, Math.min(total - 1, obsStartIdx));
+    const en = isLive ? total - 1 : Math.min(total - 1, st + obsZoom - 1);
+    const sz = en - st + 1;
+    info.classList.toggle('live', isLive);
+    const startId = recs[st]?.id ?? (st+1);
+    const endId = recs[en]?.id ?? (en+1);
+    let txt = `전체 ${total}개 · 표시 #${startId}~#${endId} (${sz}개)`;
+    if(limited && st === navMin) txt += ` · 최근 ${LIVE_NAV_MAX}개`;
+    info.textContent = txt;
+    btn.classList.toggle('live', isLive);
+    btn.disabled = isLive;
   }
+  if(obsRS) obsRS.update();
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(_setupObsRS, 220));
+} else {
+  setTimeout(_setupObsRS, 220);
 }
 
 // ── 분석 저장 (출처: 'obs') ──
