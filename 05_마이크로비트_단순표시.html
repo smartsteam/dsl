@@ -5152,15 +5152,18 @@ let _liveSelDrag = null;     // 드래그 중 임시 상태
 let _liveSelHintShown = false;
 // 시간 탐색: liveStartIdx === null 이면 최신을 따라감(라이브). 정수면 그 인덱스부터 liveWin개를 표시.
 let liveStartIdx = null;
+// 탐색 슬라이더로 거슬러 올라갈 수 있는 최대 데이터 개수
+const LIVE_NAV_MAX = 3000;
 
 // 현재 뷰의 시작 인덱스 (liveBuf 절대 인덱스)
 function _liveViewStart(){
   const total = liveBuf.length;
+  const navMin = Math.max(0, total - LIVE_NAV_MAX); // 탐색 가능 영역의 최소 시작
   if(liveStartIdx === null || liveStartIdx === undefined){
-    return Math.max(0, total - liveWin);
+    return Math.max(navMin, total - liveWin);
   }
-  const maxStart = Math.max(0, total - liveWin);
-  return Math.max(0, Math.min(maxStart, liveStartIdx));
+  const maxStart = Math.max(navMin, total - liveWin);
+  return Math.max(navMin, Math.min(maxStart, liveStartIdx));
 }
 // 현재 뷰 슬라이스
 function _liveViewSlice(){
@@ -5810,12 +5813,13 @@ if(document.readyState === 'loading'){
 function setLiveScroll(v){
   v = parseInt(v); if(isNaN(v)) v = 0;
   const total = liveBuf.length;
+  const navMin = Math.max(0, total - LIVE_NAV_MAX);
   const maxStart = Math.max(0, total - liveWin);
   if(v >= maxStart){
     // 슬라이더가 최우측이면 라이브(최신 추종) 모드
     liveStartIdx = null;
   } else {
-    liveStartIdx = Math.max(0, v);
+    liveStartIdx = Math.max(navMin, v);
   }
   _liveNeedsUpdate = true;
   flushLiveChart();
@@ -5833,24 +5837,36 @@ function _updateLiveScrollUI(){
   const btn = document.getElementById('live-scroll-latest');
   if(!sl || !info) return;
   const total = liveBuf.length;
+  const navMin = Math.max(0, total - LIVE_NAV_MAX);
   const maxStart = Math.max(0, total - liveWin);
-  // 데이터가 liveWin 미만이면 슬라이더 비활성
-  const hasOverflow = maxStart > 0;
+  // 탐색 가능 영역이 있어야 슬라이더 활성
+  const hasOverflow = maxStart > navMin;
   sl.disabled = !hasOverflow;
+  sl.min = navMin;
   sl.max = maxStart;
+  const limited = total > LIVE_NAV_MAX;
   if(liveStartIdx === null){
     // 라이브: 슬라이더는 우측 끝
     sl.value = maxStart;
     info.classList.add('live');
-    info.textContent = total > 0 ? `최신 (${Math.max(1, total - liveWin + 1)}~${total})` : '대기 중';
+    if(total > 0){
+      const winStart = Math.max(1, total - liveWin + 1);
+      info.textContent = limited
+        ? `최신 (${winStart}~${total}) · 탐색: 최근 ${LIVE_NAV_MAX}개`
+        : `최신 (${winStart}~${total})`;
+    } else {
+      info.textContent = '대기 중';
+    }
     if(btn){ btn.classList.add('live'); btn.disabled = true; }
   } else {
-    const s = Math.max(0, Math.min(maxStart, liveStartIdx));
+    const s = Math.max(navMin, Math.min(maxStart, liveStartIdx));
     sl.value = s;
     info.classList.remove('live');
     const showStart = s + 1;
     const showEnd = Math.min(total, s + liveWin);
-    info.textContent = `${showStart}~${showEnd} / ${total}`;
+    info.textContent = limited
+      ? `${showStart}~${showEnd} / 최근 ${LIVE_NAV_MAX}개 (전체 ${total})`
+      : `${showStart}~${showEnd} / ${total}`;
     if(btn){ btn.classList.remove('live'); btn.disabled = false; }
   }
 }
@@ -6150,11 +6166,12 @@ let obsStartIdx = null;        // null이면 최신 추종, 정수면 그 인덱
 // ── 뷰 계산 헬퍼 ──
 function _obsViewStart(){
   const total = recs.length;
+  const navMin = Math.max(0, total - LIVE_NAV_MAX);
   if(obsStartIdx === null || obsStartIdx === undefined){
-    return Math.max(0, total - obsZoom);
+    return Math.max(navMin, total - obsZoom);
   }
-  const maxStart = Math.max(0, total - obsZoom);
-  return Math.max(0, Math.min(maxStart, obsStartIdx));
+  const maxStart = Math.max(navMin, total - obsZoom);
+  return Math.max(navMin, Math.min(maxStart, obsStartIdx));
 }
 function _obsViewSlice(){
   const start = _obsViewStart();
@@ -6584,9 +6601,10 @@ function _setupObsSel(){
 function setObsScroll(v){
   v = parseInt(v); if(isNaN(v)) v = 0;
   const total = recs.length;
+  const navMin = Math.max(0, total - LIVE_NAV_MAX);
   const maxStart = Math.max(0, total - obsZoom);
   if(v >= maxStart){ obsStartIdx = null; }
-  else { obsStartIdx = Math.max(0, v); }
+  else { obsStartIdx = Math.max(navMin, v); }
   updChart();
 }
 function goObsLatest(){
@@ -6599,22 +6617,35 @@ function _updateObsScrollUI(){
   const btn = document.getElementById('obs-scroll-latest');
   if(!sl || !info) return;
   const total = recs.length;
+  const navMin = Math.max(0, total - LIVE_NAV_MAX);
   const maxStart = Math.max(0, total - obsZoom);
-  const hasOverflow = maxStart > 0;
+  const hasOverflow = maxStart > navMin;
   sl.disabled = !hasOverflow;
+  sl.min = navMin;
   sl.max = maxStart;
+  const limited = total > LIVE_NAV_MAX;
   if(obsStartIdx === null){
     sl.value = maxStart;
     info.classList.add('live');
-    info.textContent = total > 0 ? `최신 (#${recs[Math.max(0, total-obsZoom)].id}~#${recs[total-1].id})` : '대기 중';
+    if(total > 0){
+      const startId = recs[Math.max(0, total-obsZoom)].id;
+      const endId = recs[total-1].id;
+      info.textContent = limited
+        ? `최신 (#${startId}~#${endId}) · 탐색: 최근 ${LIVE_NAV_MAX}개`
+        : `최신 (#${startId}~#${endId})`;
+    } else {
+      info.textContent = '대기 중';
+    }
     if(btn){ btn.classList.add('live'); btn.disabled = true; }
   } else {
-    const s = Math.max(0, Math.min(maxStart, obsStartIdx));
+    const s = Math.max(navMin, Math.min(maxStart, obsStartIdx));
     sl.value = s;
     info.classList.remove('live');
     const showStart = s + 1;
     const showEnd = Math.min(total, s + obsZoom);
-    info.textContent = `${showStart}~${showEnd} / ${total}`;
+    info.textContent = limited
+      ? `${showStart}~${showEnd} / 최근 ${LIVE_NAV_MAX}개 (전체 ${total})`
+      : `${showStart}~${showEnd} / ${total}`;
     if(btn){ btn.classList.remove('live'); btn.disabled = false; }
   }
 }
