@@ -250,6 +250,240 @@ td.tv{font-size:15px;font-weight:900}
 .g-save-row{display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding:5px 0 7px;border-bottom:2px solid var(--border);margin-bottom:7px}
 .g-save-row span{font-size:12px;font-weight:700;color:var(--sub);white-space:nowrap}
 .cw{flex:1;min-height:0;position:relative}
+/* ── 실시간 그래프 구간 선택 (드래그) ── */
+#live-cw{cursor:crosshair}
+#live-cw.has-selection{cursor:default}
+#obs-cw{cursor:crosshair}
+#obs-cw.has-selection{cursor:default}
+.live-sel-overlay{
+  position:absolute;top:0;bottom:0;
+  background:rgba(79,126,248,0.16);
+  border-left:2px dashed var(--acc);
+  border-right:2px dashed var(--acc);
+  pointer-events:none;display:none;z-index:3;
+  box-sizing:border-box;
+}
+.live-sel-overlay.active{display:block}
+.live-sel-edge{
+  position:absolute;top:0;bottom:0;width:6px;
+  background:var(--acc);opacity:0;
+}
+.live-sel-overlay.active .live-sel-edge{opacity:.6}
+.live-sel-edge.left{left:-3px}
+.live-sel-edge.right{right:-3px}
+/* ── 실시간 통계 패널 ── */
+.live-stats-panel{
+  position:absolute;left:8px;bottom:8px;right:8px;max-width:560px;
+  background:var(--surface);border:1.5px solid var(--acc);
+  border-radius:11px;padding:8px 10px;
+  box-shadow:0 6px 22px rgba(79,126,248,.22);
+  z-index:6;display:none;font-size:12px;
+}
+.live-stats-panel.show{display:block}
+.live-stats-head{
+  display:flex;align-items:center;gap:6px;margin-bottom:6px;
+  padding-bottom:5px;border-bottom:1.5px dashed var(--border);
+  cursor:move;user-select:none;-webkit-user-select:none;touch-action:none;
+}
+.live-stats-head:hover{background:var(--acc-s);border-radius:6px 6px 0 0;margin:-2px -4px 6px;padding:2px 4px 5px}
+.live-stats-head.dragging{cursor:grabbing;background:var(--acc-s);border-radius:6px 6px 0 0;margin:-2px -4px 6px;padding:2px 4px 5px}
+.live-stats-grip{
+  display:inline-flex;flex-direction:column;gap:2px;flex-shrink:0;
+  color:var(--bm);font-size:0;line-height:0;margin-right:1px;
+}
+.live-stats-grip span{
+  width:11px;height:2px;background:currentColor;border-radius:1px;display:block;
+}
+.live-stats-head:hover .live-stats-grip,
+.live-stats-head.dragging .live-stats-grip{color:var(--acc)}
+.live-stats-title{font-size:12px;font-weight:900;color:var(--acc);flex:1}
+.live-stats-meta{font-size:11px;font-weight:700;color:var(--sub);white-space:nowrap}
+.live-stats-close{
+  width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--sub);font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;
+}
+.live-stats-close:hover{background:var(--warm-s);border-color:var(--warm);color:var(--warm)}
+.live-stats-table{width:100%;border-collapse:collapse;font-size:12px}
+.live-stats-table th,
+.live-stats-table td{padding:3px 6px;text-align:right;white-space:nowrap}
+.live-stats-table th{
+  font-size:10px;font-weight:800;color:var(--sub);
+  border-bottom:1.5px solid var(--border);background:var(--bg);
+}
+.live-stats-table th:first-child,
+.live-stats-table td:first-child{text-align:left}
+.live-stats-table tbody tr:not(:last-child) td{border-bottom:1px dashed var(--border)}
+.live-stats-name{
+  display:inline-block;padding:1px 8px;border-radius:10px;
+  font-size:11px;font-weight:900;color:#fff;
+}
+.live-stats-empty{color:var(--muted);text-align:center;padding:6px;font-size:11px}
+/* 저장 버튼 (구간/두점 패널 공용) */
+.live-stats-save{
+  font-size:11px;padding:3px 9px;border-radius:6px;
+  border:1.5px solid var(--grn);background:var(--grn-s);color:var(--grn);
+  cursor:pointer;font-weight:800;flex-shrink:0;white-space:nowrap;
+  transition:all .15s;
+}
+.live-stats-save:hover{background:var(--grn);color:#fff}
+.live-stats-save.saved{background:var(--grn);color:#fff;animation:savePulse .4s}
+@keyframes savePulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+/* 두 점 분석(기울기) 패널 */
+.live-tan-panel{
+  position:absolute;left:8px;top:8px;max-width:520px;
+  background:var(--surface);border:1.5px solid var(--pur);
+  border-radius:11px;padding:8px 10px;
+  box-shadow:0 6px 22px rgba(139,92,246,.22);
+  z-index:6;display:none;font-size:12px;
+}
+.live-tan-panel.show{display:block}
+.live-tan-head{
+  display:flex;align-items:center;gap:6px;margin-bottom:6px;
+  padding-bottom:5px;border-bottom:1.5px dashed var(--border);
+  cursor:move;user-select:none;-webkit-user-select:none;touch-action:none;
+}
+.live-tan-head:hover{background:#f4eefd;border-radius:6px 6px 0 0;margin:-2px -4px 6px;padding:2px 4px 5px}
+.live-tan-head.dragging{cursor:grabbing;background:#f4eefd;border-radius:6px 6px 0 0;margin:-2px -4px 6px;padding:2px 4px 5px}
+.live-tan-title{font-size:12px;font-weight:900;color:var(--pur);flex:1}
+.live-tan-meta{font-size:11px;font-weight:700;color:var(--sub);white-space:nowrap}
+.live-tan-table{width:100%;border-collapse:collapse;font-size:12px}
+.live-tan-table th, .live-tan-table td{padding:3px 6px;text-align:right;white-space:nowrap}
+.live-tan-table th{
+  font-size:10px;font-weight:800;color:var(--sub);
+  border-bottom:1.5px solid var(--border);background:var(--bg);
+}
+.live-tan-table th:first-child, .live-tan-table td:first-child{text-align:left}
+.live-tan-table tbody tr:not(:last-child) td{border-bottom:1px dashed var(--border)}
+.live-tan-empty{color:var(--muted);text-align:center;padding:6px;font-size:11px}
+/* 두 점 마커 (그래프 위 세로 점선 + 점) */
+.live-tan-marker{
+  position:absolute;width:0;border-left:2.5px dashed var(--pur);
+  pointer-events:none;z-index:4;
+}
+.live-tan-marker::before{
+  content:attr(data-label);position:absolute;top:-3px;left:50%;
+  transform:translate(-50%,-100%);
+  background:var(--pur);color:#fff;font-size:10px;font-weight:900;
+  padding:1px 7px;border-radius:9px;line-height:1.3;
+  white-space:nowrap;box-shadow:0 2px 6px rgba(139,92,246,.35);
+}
+.live-tan-marker::after{
+  content:'';position:absolute;left:-7px;top:50%;
+  width:13px;height:13px;border-radius:50%;
+  background:var(--pur);border:2.5px solid #fff;
+  box-shadow:0 0 0 1.5px var(--pur);transform:translateY(-50%);
+}
+.live-tan-hint{
+  position:absolute;left:50%;top:8px;transform:translateX(-50%);
+  font-size:11px;color:var(--pur);background:rgba(255,255,255,.92);
+  padding:3px 9px;border-radius:11px;border:1.5px dashed var(--pur);
+  z-index:5;pointer-events:none;display:none;font-weight:700;
+}
+.live-tan-hint.show{display:block}
+/* 두 점 분석 — 채널별 기울기 선 SVG */
+.live-tan-svg{
+  position:absolute;left:0;top:0;width:100%;height:100%;
+  pointer-events:none;z-index:3;display:none;
+}
+.live-tan-svg.show{display:block}
+/* 시간 탐색 슬라이더 */
+.live-scroll-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 10px;margin-top:6px;
+  background:var(--bg);border:1.5px solid var(--border);
+  border-radius:9px;flex-shrink:0;
+}
+.live-scroll-bar .ls-lbl{
+  font-size:11px;font-weight:700;color:var(--sub);white-space:nowrap;
+  display:flex;align-items:center;gap:4px;
+}
+.live-scroll-bar input[type=range]{flex:1;cursor:pointer;min-width:80px}
+.live-scroll-bar .ls-info{
+  font-size:11px;font-weight:700;color:var(--text);
+  background:var(--surface);padding:3px 9px;border-radius:11px;
+  border:1px solid var(--border);white-space:nowrap;
+  min-width:96px;text-align:center;
+}
+.live-scroll-bar .ls-info.live{
+  color:var(--grn);background:var(--grn-s);border-color:#7de0ab;
+}
+.live-scroll-bar .ls-info.live::before{
+  content:'●';margin-right:4px;animation:pdot 1.5s infinite;
+}
+.live-scroll-bar .ls-btn{
+  font-size:11px;padding:4px 9px;border-radius:7px;font-weight:800;
+  border:1.5px solid var(--border);background:var(--surface);color:var(--sub);
+  cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;
+}
+.live-scroll-bar .ls-btn:hover{background:var(--acc-s);color:var(--acc);border-color:var(--acc)}
+.live-scroll-bar .ls-btn.live{background:var(--grn);color:#fff;border-color:var(--grn)}
+.live-scroll-bar .ls-btn:disabled{opacity:.45;cursor:not-allowed}
+@keyframes pdot{0%,100%{opacity:1}50%{opacity:.35}}
+/* "데이터 분석" 탭 */
+#a-tab{padding:0;flex:1;overflow:hidden;background:var(--bg)}
+.da-wrap{flex:1;overflow:auto;padding:10px 12px;min-height:0}
+.da-section{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:11px;padding:10px 12px;margin-bottom:12px;
+}
+.da-sec-head{
+  display:flex;align-items:center;gap:8px;margin-bottom:8px;
+  padding-bottom:6px;border-bottom:1.5px dashed var(--border);
+  flex-wrap:wrap;
+}
+.da-sec-title{font-size:14px;font-weight:900;color:var(--text);flex:1;min-width:120px}
+.da-sec-count{
+  font-size:11px;font-weight:700;color:var(--sub);
+  background:var(--bg);padding:2px 9px;border-radius:11px;
+  border:1px solid var(--border);
+}
+.da-sec-clear{
+  font-size:11px;padding:4px 10px;border-radius:7px;
+  border:1.5px solid var(--border);background:var(--surface);
+  color:var(--warm);cursor:pointer;font-weight:700;
+}
+.da-sec-clear:hover{background:var(--warm-s);border-color:var(--warm)}
+.da-empty{text-align:center;color:var(--muted);padding:18px 12px;font-size:13px;line-height:1.7}
+.da-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+.da-table{border-collapse:collapse;font-size:12px;min-width:100%}
+.da-table th, .da-table td{
+  padding:5px 9px;border:1px solid var(--border);
+  white-space:nowrap;text-align:right;vertical-align:middle;
+}
+.da-table th:first-child, .da-table td:first-child{
+  text-align:left;background:var(--bg);font-weight:700;
+  position:sticky;left:0;z-index:2;min-width:84px;
+}
+.da-table thead th{
+  background:var(--acc-s);color:var(--text);font-weight:800;
+  font-size:11px;
+}
+.da-col-head{display:flex;align-items:center;gap:5px;justify-content:space-between}
+.da-col-title{font-weight:900;font-size:12px;color:var(--text)}
+.da-col-sub{font-size:10px;color:var(--sub);font-weight:600}
+.da-col-del{
+  width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--sub);font-size:13px;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;line-height:1;
+  flex-shrink:0;
+}
+.da-col-del:hover{background:var(--warm-s);border-color:var(--warm);color:var(--warm)}
+.da-ch-row td{
+  background:#f5f7fe;font-weight:800;color:var(--text);
+  font-size:11px;text-align:left!important;
+}
+.da-ch-dot{
+  display:inline-block;width:9px;height:9px;border-radius:50%;
+  margin-right:5px;vertical-align:middle;
+}
+.live-stats-hint{
+  position:absolute;left:50%;top:8px;transform:translateX(-50%);
+  font-size:11px;color:var(--sub);background:rgba(255,255,255,.85);
+  padding:3px 9px;border-radius:11px;border:1px dashed var(--bm);
+  z-index:4;pointer-events:none;display:none;
+}
+.live-stats-hint.show{display:block}
 .ndo{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;color:var(--muted);gap:9px;pointer-events:none}
 .ndo .ni{font-size:38px}
 #stat-txt{font-size:12px;color:var(--sub)}
@@ -828,6 +1062,7 @@ basic.forever(function () {
           <button class="tbtn" id="ttab" onclick="switchTab('t')">📋 관찰 기록표</button>
           <button class="tbtn" id="gtab-btn" onclick="switchTab('g')">📊 관찰 그래프</button>
           <button class="tbtn" id="mv-btn" onclick="toggleMultiView()" title="실시간+기록 동시 보기">⊞ 다중보기</button>
+          <button class="tbtn" id="atab-btn" onclick="switchTab('a')" title="구간/두 점 분석 결과 모음">📐 데이터 분석</button>
           <div class="tspc"></div>
           <!-- 실시간 탭 전용 버튼 -->
           <div id="tbar-live-btns" style="display:flex;gap:5px;align-items:center">
@@ -896,10 +1131,53 @@ basic.forever(function () {
           </div>
           <div class="cw" id="live-cw">
             <canvas id="live-chart"></canvas>
+            <!-- 두 점 분석 기울기 선(SVG) — 채널별 -->
+            <svg class="live-tan-svg" id="live-tan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+            <!-- 드래그 구간 선택 오버레이 -->
+            <div class="live-sel-overlay" id="live-sel-overlay">
+              <div class="live-sel-edge left"></div>
+              <div class="live-sel-edge right"></div>
+            </div>
+            <!-- 두 점 분석 마커 (수신 정지 시 클릭으로 추가) -->
+            <div class="live-tan-marker" id="live-tan-mk-a" data-label="A" style="display:none"></div>
+            <div class="live-tan-marker" id="live-tan-mk-b" data-label="B" style="display:none"></div>
+            <!-- 첫 사용 안내 -->
+            <div class="live-stats-hint" id="live-stats-hint">💡 그래프를 드래그하여 구간을 지정하면 통계가 표시돼요</div>
+            <div class="live-tan-hint" id="live-tan-hint">📐 수신 정지 상태에서 두 지점을 클릭하면 기울기를 분석할 수 있어요</div>
+            <!-- 통계 패널 -->
+            <div class="live-stats-panel" id="live-stats-panel">
+              <div class="live-stats-head">
+                <span class="live-stats-grip" aria-hidden="true"><span></span><span></span><span></span></span>
+                <span class="live-stats-title">📊 구간 통계</span>
+                <span class="live-stats-meta" id="live-stats-meta"></span>
+                <button class="live-stats-save" id="live-stats-save-btn" onclick="saveCurrentRangeAnalysis(this)" title="이 구간 통계를 분석 탭에 저장">💾 저장</button>
+                <button class="live-stats-close" onclick="clearLiveSel()" title="선택 해제">✕</button>
+              </div>
+              <div id="live-stats-body"></div>
+            </div>
+            <!-- 두 점 분석(기울기) 패널 -->
+            <div class="live-tan-panel" id="live-tan-panel">
+              <div class="live-tan-head">
+                <span class="live-stats-grip" aria-hidden="true"><span></span><span></span><span></span></span>
+                <span class="live-tan-title">📐 두 점 분석 (기울기·미분)</span>
+                <span class="live-tan-meta" id="live-tan-meta"></span>
+                <button class="live-stats-save" id="live-tan-save-btn" onclick="saveCurrentTangentAnalysis(this)" title="이 분석 결과를 분석 탭에 저장">💾 저장</button>
+                <button class="live-stats-close" onclick="clearLiveTangent()" title="해제">✕</button>
+              </div>
+              <div id="live-tan-body"></div>
+            </div>
             <div class="ndo" id="live-ndo" style="display:flex">
               <span class="ni">📡</span>
               <span>장치를 연결하면 실시간 측정값가 표시돼요!</span>
             </div>
+          </div>
+          <!-- 시간 탐색 슬라이더 -->
+          <div class="live-scroll-bar" id="live-scroll-bar">
+            <span class="ls-lbl">⏪ 탐색</span>
+            <input type="range" id="live-scroll" min="0" max="0" value="0" step="1"
+              oninput="setLiveScroll(this.value)" disabled>
+            <span class="ls-info live" id="live-scroll-info">최신</span>
+            <button class="ls-btn live" id="live-scroll-latest" onclick="goLiveLatest()" title="최신 위치로 이동">⏭ 최신으로</button>
           </div>
         </div>
 
@@ -949,13 +1227,83 @@ basic.forever(function () {
             <span id="stat-txt" style="font-size:11px;color:var(--sub);white-space:nowrap"></span>
           </div>
 
-          <div class="cw">
+          <div class="cw" id="obs-cw">
             <canvas id="mc"></canvas>
+            <!-- 두 점 분석 기울기 선(SVG) — 채널별 -->
+            <svg class="live-tan-svg" id="obs-tan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+            <!-- 드래그 구간 선택 오버레이 -->
+            <div class="live-sel-overlay" id="obs-sel-overlay">
+              <div class="live-sel-edge left"></div>
+              <div class="live-sel-edge right"></div>
+            </div>
+            <!-- 두 점 분석 마커 -->
+            <div class="live-tan-marker" id="obs-tan-mk-a" data-label="A" style="display:none"></div>
+            <div class="live-tan-marker" id="obs-tan-mk-b" data-label="B" style="display:none"></div>
+            <!-- 안내 -->
+            <div class="live-stats-hint" id="obs-stats-hint">💡 그래프를 드래그하여 구간을 지정하면 통계가 표시돼요</div>
+            <div class="live-tan-hint" id="obs-tan-hint">📐 두 지점을 클릭하면 기울기·미분을 분석할 수 있어요</div>
+            <!-- 통계 패널 -->
+            <div class="live-stats-panel" id="obs-stats-panel">
+              <div class="live-stats-head">
+                <span class="live-stats-grip" aria-hidden="true"><span></span><span></span><span></span></span>
+                <span class="live-stats-title">📊 구간 통계</span>
+                <span class="live-stats-meta" id="obs-stats-meta"></span>
+                <button class="live-stats-save" id="obs-stats-save-btn" onclick="saveCurrentObsRangeAnalysis(this)" title="이 구간 통계를 분석 탭에 저장">💾 저장</button>
+                <button class="live-stats-close" onclick="clearObsSel()" title="선택 해제">✕</button>
+              </div>
+              <div id="obs-stats-body"></div>
+            </div>
+            <!-- 두 점 분석 패널 -->
+            <div class="live-tan-panel" id="obs-tan-panel">
+              <div class="live-tan-head">
+                <span class="live-stats-grip" aria-hidden="true"><span></span><span></span><span></span></span>
+                <span class="live-tan-title">📐 두 점 분석 (기울기·미분)</span>
+                <span class="live-tan-meta" id="obs-tan-meta"></span>
+                <button class="live-stats-save" id="obs-tan-save-btn" onclick="saveCurrentObsTangentAnalysis(this)" title="이 분석 결과를 분석 탭에 저장">💾 저장</button>
+                <button class="live-stats-close" onclick="clearObsTangent()" title="해제">✕</button>
+              </div>
+              <div id="obs-tan-body"></div>
+            </div>
             <div class="ndo" id="ndo"><span class="ni">📊</span><span>기록이 쌓이면 그래프가 나타나요!</span></div>
+          </div>
+          <!-- 시간 탐색 슬라이더 (수집 그래프) -->
+          <div class="live-scroll-bar" id="obs-scroll-bar">
+            <span class="ls-lbl">⏪ 탐색</span>
+            <input type="range" id="obs-scroll" min="0" max="0" value="0" step="1"
+              oninput="setObsScroll(this.value)" disabled>
+            <span class="ls-info live" id="obs-scroll-info">최신</span>
+            <button class="ls-btn live" id="obs-scroll-latest" onclick="goObsLatest()" title="최신 기록 위치로 이동">⏭ 최신으로</button>
           </div>
         </div>
 
         </div><!-- /mv-bottom -->
+
+        <!-- 데이터 분석 탭 -->
+        <div class="tcont" id="a-tab">
+          <div class="da-wrap" id="da-wrap">
+            <!-- 구간 통계 분석 -->
+            <div class="da-section" id="da-range-sec">
+              <div class="da-sec-head">
+                <span class="da-sec-title">📊 구간 통계 분석</span>
+                <span class="da-sec-count" id="da-range-count">0개</span>
+                <button class="ab grn-btn" onclick="dlAnalysisCSV('range')" title="구간 통계 분석을 CSV로 저장" style="font-size:11px;padding:3px 8px">💾 CSV</button>
+                <button class="da-sec-clear" onclick="clearAllRangeAnalyses()">🗑 전체 삭제</button>
+              </div>
+              <div id="da-range-body"></div>
+            </div>
+
+            <!-- 두 점 분석 -->
+            <div class="da-section" id="da-tan-sec">
+              <div class="da-sec-head">
+                <span class="da-sec-title">📐 두 점 분석 (기울기·미분)</span>
+                <span class="da-sec-count" id="da-tan-count">0개</span>
+                <button class="ab grn-btn" onclick="dlAnalysisCSV('tangent')" title="두 점 분석을 CSV로 저장" style="font-size:11px;padding:3px 8px">💾 CSV</button>
+                <button class="da-sec-clear" onclick="clearAllTangentAnalyses()">🗑 전체 삭제</button>
+              </div>
+              <div id="da-tan-body"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -3081,7 +3429,7 @@ function initChart(){
   }});
 }
 let obsZoom = 500; // 관찰 그래프 X축 표시 개수
-function setObsZoom(v){ obsZoom=parseInt(v)||500; updChart(); }
+function setObsZoom(v){ obsZoom=parseInt(v)||500; updChart(); if(typeof _updateObsScrollUI==='function') _updateObsScrollUI(); }
 function syncLiveZoom(v){
   const el=document.getElementById('live-zoom');if(el){el.value=v;document.getElementById('live-zoom-val').textContent=v;}
 }
@@ -3091,9 +3439,19 @@ function syncObsZoom(v){
 function updChart(){
   if(!chart)return;
   const nd=!recs.length;document.getElementById('ndo').style.display=nd?'flex':'none';
-  if(nd){chart.data.labels=[];chart.data.datasets=[];chart.update('none');return;}
-  // 관찰 그래프 줌: 최근 obsZoom개만 표시
-  const viewRecs = obsZoom >= recs.length ? recs : recs.slice(-obsZoom);
+  if(nd){
+    // 데이터 없음 → 선택/두점도 초기화
+    if(typeof obsSel !== 'undefined') obsSel = null;
+    if(typeof obsTangent !== 'undefined') obsTangent = null;
+    if(typeof _obsTanFirst !== 'undefined') _obsTanFirst = null;
+    if(typeof obsStartIdx !== 'undefined') obsStartIdx = null;
+    chart.data.labels=[];chart.data.datasets=[];chart.update('none');
+    if(typeof renderObsSel==='function') renderObsSel();
+    if(typeof renderObsTangent==='function') renderObsTangent();
+    if(typeof _updateObsScrollUI==='function') _updateObsScrollUI();
+    return;}
+  // 관찰 그래프 줌 + 시간 탐색
+  const viewRecs = (typeof _obsViewSlice === 'function') ? _obsViewSlice() : (obsZoom >= recs.length ? recs : recs.slice(-obsZoom));
   const xt=document.getElementById('xtype').value;
   let lbs;
   if(xt==='time')lbs=viewRecs.map(r=>r.time);
@@ -3136,6 +3494,10 @@ function updChart(){
     chart.options.scales.y.max=isNaN(_yMaxV)?undefined:_yMaxV;
   }else{chart.options.scales.y.min=undefined;chart.options.scales.y.max=undefined;}
   chart.update('none');
+  // 오버레이/마커/탐색 슬라이더 갱신
+  if(typeof renderObsSel === 'function') renderObsSel();
+  if(typeof renderObsTangent === 'function') renderObsTangent();
+  if(typeof _updateObsScrollUI === 'function') _updateObsScrollUI();
 }
 function updStats(){
   const e=document.getElementById('stat-txt');
@@ -3614,10 +3976,12 @@ function closeFS(){
 function switchTab(t){
   // 다중보기 해제
   if(_multiView){_multiView=false;document.getElementById('dp').classList.remove('multi-view');}
-  const btnMap={'l':'ltab-btn','t':'ttab','g':'gtab-btn'};
-  ['l','t','g'].forEach(x=>{
-    document.getElementById(btnMap[x]).classList.toggle('on',x===t);
-    document.getElementById(x+'-tab').classList.toggle('on',x===t);
+  const btnMap={'l':'ltab-btn','t':'ttab','g':'gtab-btn','a':'atab-btn'};
+  ['l','t','g','a'].forEach(x=>{
+    const btn=document.getElementById(btnMap[x]);
+    const tab=document.getElementById(x+'-tab');
+    if(btn) btn.classList.toggle('on',x===t);
+    if(tab) tab.classList.toggle('on',x===t);
   });
   // 탭별 액션 버튼 전환
   document.getElementById('tbar-live-btns').style.display = t==='l'?'flex':'none';
@@ -3625,6 +3989,7 @@ function switchTab(t){
   document.getElementById('tbar-graph-btns').style.display = t==='g'?'flex':'none';
   if(t==='g') setTimeout(()=>{if(chart)chart.resize();},50);
   if(t==='l'){ setTimeout(()=>{if(liveChart)liveChart.resize();flushLiveChart();},50); }
+  if(t==='a'){ if(typeof renderAnalysisTab==='function') renderAnalysisTab(); }
   if(window.innerWidth<=767) setMobAct(t==='t'?'table':t==='g'?'graph':'live');
 }
 // ── 다중보기 ──
@@ -3651,10 +4016,12 @@ function exitMultiView(){
   _multiView=false;
   document.getElementById('dp').classList.remove('multi-view');
   // 탭 원복
-  const btnMap={'l':'ltab-btn','t':'ttab','g':'gtab-btn'};
-  ['l','t','g'].forEach(x=>{
-    document.getElementById(btnMap[x]).classList.toggle('on',x===_multiBottomTab);
-    document.getElementById(x+'-tab').classList.toggle('on',x===_multiBottomTab);
+  const btnMap={'l':'ltab-btn','t':'ttab','g':'gtab-btn','a':'atab-btn'};
+  ['l','t','g','a'].forEach(x=>{
+    const btn=document.getElementById(btnMap[x]);
+    const tab=document.getElementById(x+'-tab');
+    if(btn) btn.classList.toggle('on',x===_multiBottomTab);
+    if(tab) tab.classList.toggle('on',x===_multiBottomTab);
   });
   if(_multiBottomTab==='g')setTimeout(()=>{if(chart)chart.resize();},50);
   if(_multiBottomTab==='l')setTimeout(()=>{if(liveChart)liveChart.resize();flushLiveChart();},50);
@@ -4729,7 +5096,7 @@ function flushLiveChart(){
   _liveRaf = null;
   if(!_liveNeedsUpdate || !liveChart) return;
   _liveNeedsUpdate = false;
-  const view = liveWin >= liveBuf.length ? liveBuf : liveBuf.slice(-liveWin);
+  const view = _liveViewSlice();
   const labels = view.map(r => r.t);
   // liveChList 기반 데이터셋 구축 (표시 채널만)
   const visCh=liveChList.filter(c=>c.vis&&c.sensorId&&c.sensorId>0);
@@ -4751,6 +5118,8 @@ function flushLiveChart(){
   liveChart.options.scales.y.min=rMin;
   liveChart.options.scales.y.max=rMax;
   liveChart.update('none');
+  // 구간 선택 오버레이/통계 동기화
+  if(typeof renderLiveSel === 'function') renderLiveSel();
 }
 
 function updLiveCurVals(vals){
@@ -4776,6 +5145,384 @@ function setLiveWin(v){
   if(dpFSLiveChart && dpFSCurrentTab === 'l'){ _dpFSLiveNeedsUpdate = true; flushDPFSLive(); }
 }
 
+// ════════════ 실시간 그래프 구간 선택 + 통계 ════════════
+// liveBuf 절대 인덱스 기준 저장 — 새 데이터가 들어와도 같은 시간 구간을 유지
+let liveSel = null;          // {startIdx, endIdx} (liveBuf 절대 인덱스)
+let _liveSelDrag = null;     // 드래그 중 임시 상태
+let _liveSelHintShown = false;
+// 시간 탐색: liveStartIdx === null 이면 최신을 따라감(라이브). 정수면 그 인덱스부터 liveWin개를 표시.
+let liveStartIdx = null;
+
+// 현재 뷰의 시작 인덱스 (liveBuf 절대 인덱스)
+function _liveViewStart(){
+  const total = liveBuf.length;
+  if(liveStartIdx === null || liveStartIdx === undefined){
+    return Math.max(0, total - liveWin);
+  }
+  const maxStart = Math.max(0, total - liveWin);
+  return Math.max(0, Math.min(maxStart, liveStartIdx));
+}
+// 현재 뷰 슬라이스
+function _liveViewSlice(){
+  const start = _liveViewStart();
+  const end = Math.min(liveBuf.length, start + liveWin);
+  return liveBuf.slice(start, end);
+}
+
+// 픽셀 X → 현재 화면(view)에 보이는 라벨 인덱스
+function _pxToViewIdx(px){
+  if(!liveChart) return -1;
+  const xs = liveChart.scales.x;
+  const len = liveChart.data.labels.length;
+  if(!xs || len <= 0) return -1;
+  const left = xs.left, right = xs.right;
+  const w = right - left;
+  if(w <= 0) return -1;
+  const ratio = (px - left) / w;
+  let idx = Math.round(ratio * (len - 1));
+  return Math.max(0, Math.min(len - 1, idx));
+}
+
+// view 인덱스 → liveBuf 절대 인덱스
+function _viewIdxToBufIdx(viewIdx){
+  return _liveViewStart() + viewIdx;
+}
+
+// liveBuf 절대 인덱스 → 그래프 영역 픽셀 X
+function _bufIdxToPx(bufIdx){
+  if(!liveChart) return null;
+  const xs = liveChart.scales.x;
+  const len = liveChart.data.labels.length;
+  if(!xs || len <= 0) return null;
+  const off = _liveViewStart();
+  const v = bufIdx - off;
+  if(len === 1) return (xs.left + xs.right) / 2;
+  const ratio = Math.max(0, Math.min(1, v / (len - 1)));
+  return xs.left + ratio * (xs.right - xs.left);
+}
+
+// 캔버스 좌표 가져오기
+function _liveSelPos(e){
+  const canvas = document.getElementById('live-chart');
+  const rect = canvas.getBoundingClientRect();
+  const cx = (e.touches && e.touches[0]) ? e.touches[0].clientX
+           : (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX
+           : e.clientX;
+  return cx - rect.left;
+}
+
+// 통계 계산: 표시 중인 채널별 평균/최대/최소/표준편차
+function computeLiveStats(){
+  if(!liveSel || !liveBuf.length) return null;
+  let s = Math.min(liveSel.startIdx, liveSel.endIdx);
+  let e = Math.max(liveSel.startIdx, liveSel.endIdx);
+  s = Math.max(0, s);
+  e = Math.min(liveBuf.length - 1, e);
+  if(s > e) return null;
+  const slice = liveBuf.slice(s, e + 1);
+  const visCh = liveChList.filter(c => c.vis && c.sensorId && c.sensorId > 0);
+  const series = visCh.map(ch => {
+    let values;
+    if(ch.type === 'temp'){
+      values = slice.map(r => r.vals[ch.thermoIdx]);
+    } else {
+      values = slice.map(r => {
+        const a = (r.aux||[]).find(x => x.thermoIdx === ch.thermoIdx && x.slotIdx === ch.slotIdx);
+        return a ? a.value : null;
+      });
+    }
+    values = values.filter(v => v !== null && v !== undefined && !isNaN(v));
+    const n = values.length;
+    if(n === 0) return { label: ch.label, color: ch.color, n: 0 };
+    const sum = values.reduce((a,b) => a + b, 0);
+    const mean = sum / n;
+    let max = values[0], min = values[0];
+    for(let i = 1; i < n; i++){ if(values[i] > max) max = values[i]; if(values[i] < min) min = values[i]; }
+    let sse = 0;
+    for(let i = 0; i < n; i++){ const d = values[i] - mean; sse += d * d; }
+    const std = n > 1 ? Math.sqrt(sse / (n - 1)) : 0;
+    return { label: ch.label, color: ch.color, n, mean, max, min, std };
+  });
+  return {
+    startTime: liveBuf[s].t,
+    endTime: liveBuf[e].t,
+    count: e - s + 1,
+    series
+  };
+}
+
+// 오버레이/통계 패널 갱신 (차트 업데이트 시마다 호출)
+function renderLiveSel(){
+  const overlay = document.getElementById('live-sel-overlay');
+  const panel = document.getElementById('live-stats-panel');
+  const cw = document.getElementById('live-cw');
+  if(!overlay || !panel || !cw || !liveChart) return;
+
+  if(!liveSel){
+    overlay.classList.remove('active');
+    panel.classList.remove('show');
+    cw.classList.remove('has-selection');
+    return;
+  }
+
+  const x1 = _bufIdxToPx(Math.min(liveSel.startIdx, liveSel.endIdx));
+  const x2 = _bufIdxToPx(Math.max(liveSel.startIdx, liveSel.endIdx));
+  const xs = liveChart.scales.x;
+  if(x1 == null || x2 == null || !xs){
+    overlay.classList.remove('active');
+    return;
+  }
+  const left = Math.max(xs.left, Math.min(x1, x2));
+  const right = Math.min(xs.right, Math.max(x1, x2));
+  const ya = liveChart.chartArea;
+  if(right - left < 1){
+    overlay.classList.remove('active');
+  } else {
+    overlay.style.left = left + 'px';
+    overlay.style.width = (right - left) + 'px';
+    overlay.style.top = (ya ? ya.top : 0) + 'px';
+    overlay.style.height = (ya ? (ya.bottom - ya.top) : cw.clientHeight) + 'px';
+    overlay.classList.add('active');
+    cw.classList.add('has-selection');
+  }
+
+  const stats = computeLiveStats();
+  if(!stats){
+    panel.classList.remove('show');
+    return;
+  }
+  const meta = document.getElementById('live-stats-meta');
+  if(meta) meta.textContent = `${stats.startTime} ~ ${stats.endTime}  ·  ${stats.count}개`;
+
+  const body = document.getElementById('live-stats-body');
+  if(body){
+    if(!stats.series.length){
+      body.innerHTML = '<div class="live-stats-empty">표시된 채널이 없어요</div>';
+    } else {
+      const u = uLbl();
+      const fmt = v => (v === undefined || v === null || isNaN(v)) ? '-' : (Math.round(v * 100) / 100).toFixed(2);
+      const rows = stats.series.map(ss => {
+        if(ss.n === 0){
+          return `<tr><td><span class="live-stats-name" style="background:${ss.color}">${ss.label}</span></td>
+            <td colspan="4" style="text-align:center;color:var(--muted)">데이터 없음</td></tr>`;
+        }
+        return `<tr>
+          <td><span class="live-stats-name" style="background:${ss.color}">${ss.label}</span></td>
+          <td>${fmt(ss.mean)}</td>
+          <td>${fmt(ss.max)}</td>
+          <td>${fmt(ss.min)}</td>
+          <td>${fmt(ss.std)}</td>
+        </tr>`;
+      }).join('');
+      body.innerHTML = `
+        <table class="live-stats-table">
+          <thead><tr>
+            <th>채널</th>
+            <th>평균(${u})</th>
+            <th>최대(${u})</th>
+            <th>최소(${u})</th>
+            <th>표준편차</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+    panel.classList.add('show');
+  }
+}
+
+function clearLiveSel(){
+  liveSel = null;
+  _liveSelDrag = null;
+  const overlay = document.getElementById('live-sel-overlay');
+  const panel = document.getElementById('live-stats-panel');
+  const cw = document.getElementById('live-cw');
+  if(overlay) overlay.classList.remove('active');
+  if(panel) panel.classList.remove('show');
+  if(cw) cw.classList.remove('has-selection');
+}
+
+function _setupLiveSel(){
+  const canvas = document.getElementById('live-chart');
+  const cw = document.getElementById('live-cw');
+  const hint = document.getElementById('live-stats-hint');
+  if(!canvas || !cw) return;
+
+  function start(e){
+    if(!liveChart || !liveBuf.length) return;
+    if(e.target && e.target.closest && e.target.closest('.live-stats-panel')) return;
+    e.preventDefault();
+    const x = _liveSelPos(e);
+    const xs = liveChart.scales.x;
+    if(!xs) return;
+    if(x < xs.left - 4 || x > xs.right + 4) return;
+    _liveSelDrag = { x0: Math.max(xs.left, Math.min(xs.right, x)) };
+    if(hint) hint.classList.remove('show');
+  }
+  function move(e){
+    if(!_liveSelDrag || !liveChart) return;
+    const x = _liveSelPos(e);
+    const xs = liveChart.scales.x;
+    if(!xs) return;
+    const cx = Math.max(xs.left, Math.min(xs.right, x));
+    const overlay = document.getElementById('live-sel-overlay');
+    const ya = liveChart.chartArea;
+    const left = Math.min(_liveSelDrag.x0, cx);
+    const right = Math.max(_liveSelDrag.x0, cx);
+    overlay.style.left = left + 'px';
+    overlay.style.width = (right - left) + 'px';
+    overlay.style.top = (ya ? ya.top : 0) + 'px';
+    overlay.style.height = (ya ? (ya.bottom - ya.top) : cw.clientHeight) + 'px';
+    overlay.classList.add('active');
+    if(e.cancelable) e.preventDefault();
+  }
+  function end(e){
+    if(!_liveSelDrag) return;
+    const x0 = _liveSelDrag.x0;
+    _liveSelDrag = null;
+    const x1 = _liveSelPos(e);
+    if(Math.abs(x1 - x0) < 6){
+      // 짧은 클릭: 수신 정지 상태면 두 점 분석, 아니면 선택 해제
+      if(typeof streaming !== 'undefined' && !streaming){
+        if(typeof handleTangentClick === 'function') handleTangentClick(x0);
+        // 드래그 임시로 켜진 오버레이를 liveSel 상태대로 다시 정리
+        if(typeof renderLiveSel === 'function') renderLiveSel();
+        return;
+      }
+      clearLiveSel();
+      return;
+    }
+    const v0 = _pxToViewIdx(Math.min(x0, x1));
+    const v1 = _pxToViewIdx(Math.max(x0, x1));
+    if(v0 < 0 || v1 < 0){ clearLiveSel(); return; }
+    liveSel = {
+      startIdx: _viewIdxToBufIdx(v0),
+      endIdx: _viewIdxToBufIdx(v1)
+    };
+    renderLiveSel();
+  }
+
+  canvas.addEventListener('mousedown', start);
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', end);
+  canvas.addEventListener('touchcancel', end);
+
+  // 첫 사용 안내
+  function maybeShowHint(){
+    if(_liveSelHintShown || !hint) return;
+    if(liveBuf.length < 5) return;
+    if(liveSel) return;
+    _liveSelHintShown = true;
+    hint.classList.add('show');
+    setTimeout(()=>{ hint.classList.remove('show'); }, 5000);
+  }
+  if(typeof pushLiveBuf === 'function' && !pushLiveBuf._wrappedForHint){
+    const _orig = pushLiveBuf;
+    pushLiveBuf = function(...args){ _orig.apply(this, args); maybeShowHint(); };
+    pushLiveBuf._wrappedForHint = true;
+  }
+
+  window.addEventListener('resize', ()=>{ if(liveSel) setTimeout(renderLiveSel, 50); });
+
+  // ── 통계 패널 헤더 드래그(이동) ──
+  const panel = document.getElementById('live-stats-panel');
+  const head = panel ? panel.querySelector('.live-stats-head') : null;
+  if(panel && head){
+    let pDrag = null; // {sx, sy, x0, y0}
+
+    const _xy = e => {
+      const cx = (e.touches && e.touches[0]) ? e.touches[0].clientX
+               : (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX
+               : e.clientX;
+      const cy = (e.touches && e.touches[0]) ? e.touches[0].clientY
+               : (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientY
+               : e.clientY;
+      return { x: cx, y: cy };
+    };
+
+    function pStart(e){
+      // 닫기 버튼 클릭은 드래그가 아님
+      if(e.target && e.target.closest && e.target.closest('.live-stats-close')) return;
+      const cwRect = cw.getBoundingClientRect();
+      const pRect = panel.getBoundingClientRect();
+      const xy = _xy(e);
+      pDrag = {
+        sx: xy.x, sy: xy.y,
+        x0: pRect.left - cwRect.left,
+        y0: pRect.top - cwRect.top,
+        w: pRect.width, h: pRect.height
+      };
+      // bottom/right 기준에서 left/top 기준으로 전환 + 폭 고정
+      panel.style.left = pDrag.x0 + 'px';
+      panel.style.top = pDrag.y0 + 'px';
+      panel.style.right = 'auto';
+      panel.style.bottom = 'auto';
+      panel.style.width = pDrag.w + 'px';
+      panel.style.maxWidth = 'none';
+      head.classList.add('dragging');
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    function pMove(e){
+      if(!pDrag) return;
+      const xy = _xy(e);
+      const dx = xy.x - pDrag.sx;
+      const dy = xy.y - pDrag.sy;
+      const cwRect = cw.getBoundingClientRect();
+      let nx = pDrag.x0 + dx;
+      let ny = pDrag.y0 + dy;
+      const maxX = Math.max(0, cwRect.width - pDrag.w);
+      const maxY = Math.max(0, cwRect.height - pDrag.h);
+      nx = Math.max(0, Math.min(maxX, nx));
+      ny = Math.max(0, Math.min(maxY, ny));
+      panel.style.left = nx + 'px';
+      panel.style.top = ny + 'px';
+      if(e.cancelable) e.preventDefault();
+    }
+    function pEnd(){
+      if(!pDrag) return;
+      pDrag = null;
+      head.classList.remove('dragging');
+    }
+
+    head.addEventListener('mousedown', pStart);
+    head.addEventListener('touchstart', pStart, { passive: false });
+    window.addEventListener('mousemove', pMove);
+    window.addEventListener('touchmove', pMove, { passive: false });
+    window.addEventListener('mouseup', pEnd);
+    window.addEventListener('touchend', pEnd);
+    window.addEventListener('touchcancel', pEnd);
+
+    // 창 크기 바뀌면 패널이 영역 밖으로 나가지 않게 클램프
+    window.addEventListener('resize', () => {
+      if(!panel.classList.contains('show')) return;
+      if(!panel.style.left) return; // 사용자가 한 번도 드래그하지 않음 → 기본 위치 유지
+      setTimeout(() => {
+        const cwRect = cw.getBoundingClientRect();
+        const pRect = panel.getBoundingClientRect();
+        let nx = pRect.left - cwRect.left;
+        let ny = pRect.top - cwRect.top;
+        const maxX = Math.max(0, cwRect.width - pRect.width);
+        const maxY = Math.max(0, cwRect.height - pRect.height);
+        nx = Math.max(0, Math.min(maxX, nx));
+        ny = Math.max(0, Math.min(maxY, ny));
+        panel.style.left = nx + 'px';
+        panel.style.top = ny + 'px';
+      }, 80);
+    });
+  }
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(_setupLiveSel, 100));
+} else {
+  setTimeout(_setupLiveSel, 100);
+}
+// ════════════ /실시간 그래프 구간 선택 ════════════
+
+
 function clearLiveBuf(){
   liveBuf = [];
   clearAux();
@@ -4783,8 +5530,1146 @@ function clearLiveBuf(){
   document.getElementById('live-cur-vals').innerHTML = '';
   document.getElementById('live-ndo').style.display = 'flex';
   document.getElementById('live-badge').style.display = 'none';
+  if(typeof clearLiveSel === 'function') clearLiveSel();
+  if(typeof clearLiveTangent === 'function') clearLiveTangent();
   toast('🗑 실시간 데이터를 지웠어요');
 }
+
+// ════════════ 두 점 분석 (기울기·미분) ════════════
+let liveTangent = null;        // {a:bufIdx, b:bufIdx}  — 둘 다 있을 때만 분석 표시
+let _liveTanFirst = null;      // 첫 클릭 임시: bufIdx
+let _liveTanHintShown = false;
+
+// "HH:MM:SS" → 자정 기준 초 (자정 넘김 보정)
+function _hmsToSec(s){
+  if(!s) return 0;
+  const [h,m,sec]=s.split(':').map(Number);
+  return (h||0)*3600 + (m||0)*60 + (sec||0);
+}
+function _dtSeconds(t1, t2){
+  let s1=_hmsToSec(t1), s2=_hmsToSec(t2);
+  let d = s2 - s1;
+  if(d < -43200) d += 86400; // 자정 넘김
+  return d;
+}
+
+function handleTangentClick(px){
+  if(!liveChart || !liveBuf.length) return;
+  const v = _pxToViewIdx(px);
+  if(v < 0) return;
+  const bufIdx = _viewIdxToBufIdx(v);
+  if(bufIdx < 0 || bufIdx >= liveBuf.length) return;
+
+  if(_liveTanFirst === null){
+    _liveTanFirst = bufIdx;
+    liveTangent = null;
+    renderLiveTangent();
+    return;
+  }
+  // 두 번째 클릭 — 같은 점이면 1점만 유지
+  if(bufIdx === _liveTanFirst){
+    _liveTanFirst = null;
+    liveTangent = null;
+    renderLiveTangent();
+    return;
+  }
+  liveTangent = {
+    a: Math.min(_liveTanFirst, bufIdx),
+    b: Math.max(_liveTanFirst, bufIdx)
+  };
+  _liveTanFirst = null;
+  renderLiveTangent();
+}
+
+function clearLiveTangent(){
+  liveTangent = null;
+  _liveTanFirst = null;
+  renderLiveTangent();
+}
+
+function computeLiveTangent(){
+  if(!liveTangent || !liveBuf.length) return null;
+  const a = Math.max(0, Math.min(liveBuf.length-1, liveTangent.a));
+  const b = Math.max(0, Math.min(liveBuf.length-1, liveTangent.b));
+  if(a === b) return null;
+  const recA = liveBuf[a], recB = liveBuf[b];
+  const dt = _dtSeconds(recA.t, recB.t);
+  const visCh = liveChList.filter(c => c.vis && c.sensorId && c.sensorId > 0);
+  const series = visCh.map(ch => {
+    let ya, yb;
+    if(ch.type === 'temp'){
+      ya = recA.vals[ch.thermoIdx];
+      yb = recB.vals[ch.thermoIdx];
+    } else {
+      const auxA = (recA.aux||[]).find(x => x.thermoIdx === ch.thermoIdx && x.slotIdx === ch.slotIdx);
+      const auxB = (recB.aux||[]).find(x => x.thermoIdx === ch.thermoIdx && x.slotIdx === ch.slotIdx);
+      ya = auxA ? auxA.value : null;
+      yb = auxB ? auxB.value : null;
+    }
+    if(ya == null || yb == null || isNaN(ya) || isNaN(yb)){
+      return { label: ch.label, color: ch.color, valid:false };
+    }
+    const dy = yb - ya;
+    const slope = (dt !== 0) ? dy / dt : null;
+    return { label: ch.label, color: ch.color, valid:true, ya, yb, dy, slope };
+  });
+  return {
+    timeA: recA.t, timeB: recB.t,
+    dt, idxA: a, idxB: b,
+    series
+  };
+}
+
+function renderLiveTangent(){
+  const panel = document.getElementById('live-tan-panel');
+  const mkA = document.getElementById('live-tan-mk-a');
+  const mkB = document.getElementById('live-tan-mk-b');
+  const svg = document.getElementById('live-tan-svg');
+  if(!panel || !mkA || !mkB || !liveChart) return;
+  // SVG 초기화 헬퍼
+  const _hideSvg = () => { if(svg){ svg.classList.remove('show'); svg.innerHTML = ''; } };
+
+  // 마커 위치 계산
+  function placeMarker(el, bufIdx){
+    if(bufIdx == null){ el.style.display = 'none'; return; }
+    const x = _bufIdxToPx(bufIdx);
+    const ya = liveChart.chartArea;
+    if(x == null || !ya){ el.style.display = 'none'; return; }
+    // 뷰 범위를 벗어나면 마커도 숨김 (탐색으로 스크롤할 때)
+    const xs = liveChart.scales.x;
+    if(xs && (x < xs.left - 1 || x > xs.right + 1)){ el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.style.left = x + 'px';
+    el.style.top = ya.top + 'px';
+    el.style.height = (ya.bottom - ya.top) + 'px';
+  }
+  // 첫 클릭만 있는 경우
+  if(_liveTanFirst !== null){
+    placeMarker(mkA, _liveTanFirst);
+    mkB.style.display = 'none';
+    panel.classList.remove('show');
+    _hideSvg();
+    return;
+  }
+  if(!liveTangent){
+    mkA.style.display = 'none';
+    mkB.style.display = 'none';
+    panel.classList.remove('show');
+    _hideSvg();
+    return;
+  }
+  placeMarker(mkA, liveTangent.a);
+  placeMarker(mkB, liveTangent.b);
+
+  const tan = computeLiveTangent();
+  if(!tan){ panel.classList.remove('show'); _hideSvg(); return; }
+
+  // ── 채널별 기울기 선 SVG 렌더 ──
+  if(svg){
+    const xA = _bufIdxToPx(liveTangent.a);
+    const xB = _bufIdxToPx(liveTangent.b);
+    const ya = liveChart.chartArea;
+    const yScale = liveChart.scales.y;
+    if(xA != null && xB != null && xA !== xB && ya && yScale){
+      // SVG 크기를 부모(#live-cw)에 맞춤
+      const cw = document.getElementById('live-cw');
+      const w = cw ? cw.clientWidth : (ya.right + 60);
+      const h = cw ? cw.clientHeight : (ya.bottom + 60);
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      svg.setAttribute('width', w);
+      svg.setAttribute('height', h);
+
+      let inner = '';
+      const clipId = 'live-tan-clip-' + Date.now();
+      inner += `<defs><clipPath id="${clipId}"><rect x="${ya.left}" y="${ya.top}" width="${ya.right-ya.left}" height="${ya.bottom-ya.top}"/></clipPath></defs>`;
+      inner += `<g clip-path="url(#${clipId})">`;
+      tan.series.forEach(s => {
+        if(!s.valid) return;
+        const pyA = yScale.getPixelForValue(s.ya);
+        const pyB = yScale.getPixelForValue(s.yb);
+        if(!isFinite(pyA) || !isFinite(pyB)) return;
+        const dx = xB - xA, dy = pyB - pyA;
+        const slopePx = dy / dx;
+        // 차트 좌우 끝까지 외삽 (점선)
+        const x1 = ya.left,  y1 = pyA + slopePx * (x1 - xA);
+        const x2 = ya.right, y2 = pyA + slopePx * (x2 - xA);
+        // 외삽 구간 (A 왼쪽 + B 오른쪽) — 점선
+        inner += `<line x1="${x1}" y1="${y1}" x2="${xA}" y2="${pyA}" stroke="${s.color}" stroke-width="1.8" stroke-dasharray="5,3" opacity="0.55"/>`;
+        inner += `<line x1="${xB}" y1="${pyB}" x2="${x2}" y2="${y2}" stroke="${s.color}" stroke-width="1.8" stroke-dasharray="5,3" opacity="0.55"/>`;
+        // A-B 사이 — 굵은 솔리드
+        inner += `<line x1="${xA}" y1="${pyA}" x2="${xB}" y2="${pyB}" stroke="${s.color}" stroke-width="3" opacity="0.9"/>`;
+        // 양 끝 점 마커
+        inner += `<circle cx="${xA}" cy="${pyA}" r="5" fill="${s.color}" stroke="#fff" stroke-width="2"/>`;
+        inner += `<circle cx="${xB}" cy="${pyB}" r="5" fill="${s.color}" stroke="#fff" stroke-width="2"/>`;
+      });
+      inner += `</g>`;
+      svg.innerHTML = inner;
+      svg.classList.add('show');
+    } else {
+      _hideSvg();
+    }
+  }
+
+  const meta = document.getElementById('live-tan-meta');
+  if(meta){
+    const dtTxt = (Math.abs(tan.dt) < 0.001 && tan.dt !== 0) ? tan.dt.toExponential(2) : (Math.round(tan.dt*100)/100).toString();
+    meta.textContent = `A: ${tan.timeA}  →  B: ${tan.timeB}  ·  Δt = ${dtTxt}초`;
+  }
+  const body = document.getElementById('live-tan-body');
+  if(body){
+    if(!tan.series.length){
+      body.innerHTML = '<div class="live-tan-empty">표시된 채널이 없어요</div>';
+    } else {
+      const u = uLbl();
+      const fmt = v => (v === undefined || v === null || isNaN(v)) ? '-' : (Math.round(v * 1000) / 1000).toFixed(3);
+      const fmtSlope = v => {
+        if(v === null || v === undefined || !isFinite(v)) return '-';
+        if(Math.abs(v) >= 1000 || (Math.abs(v) < 0.001 && v !== 0)) return v.toExponential(2);
+        return (Math.round(v * 1000) / 1000).toFixed(3);
+      };
+      const rows = tan.series.map(s => {
+        if(!s.valid){
+          return `<tr><td><span class="live-stats-name" style="background:${s.color}">${s.label}</span></td>
+            <td colspan="4" style="text-align:center;color:var(--muted)">데이터 없음</td></tr>`;
+        }
+        return `<tr>
+          <td><span class="live-stats-name" style="background:${s.color}">${s.label}</span></td>
+          <td>${fmt(s.ya)}</td>
+          <td>${fmt(s.yb)}</td>
+          <td><b>${fmt(s.dy)}</b></td>
+          <td><b>${fmtSlope(s.slope)}</b></td>
+        </tr>`;
+      }).join('');
+      body.innerHTML = `
+        <table class="live-tan-table">
+          <thead><tr>
+            <th>채널</th>
+            <th>y(A) ${u}</th>
+            <th>y(B) ${u}</th>
+            <th>Δy</th>
+            <th>기울기 (${u}/초)</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+    panel.classList.add('show');
+  }
+}
+
+// 두 점 분석 패널 헤더 드래그 (구간 통계 패널과 동일 방식)
+function _setupLiveTanDrag(){
+  const panel = document.getElementById('live-tan-panel');
+  const cw = document.getElementById('live-cw');
+  if(!panel || !cw) return;
+  const head = panel.querySelector('.live-tan-head');
+  if(!head) return;
+  let pDrag = null;
+  const _xy = e => ({
+    x:(e.touches&&e.touches[0])?e.touches[0].clientX:(e.changedTouches&&e.changedTouches[0])?e.changedTouches[0].clientX:e.clientX,
+    y:(e.touches&&e.touches[0])?e.touches[0].clientY:(e.changedTouches&&e.changedTouches[0])?e.changedTouches[0].clientY:e.clientY
+  });
+  function pStart(e){
+    if(e.target && e.target.closest && (e.target.closest('.live-stats-close')||e.target.closest('.live-stats-save'))) return;
+    const cwRect = cw.getBoundingClientRect();
+    const pRect = panel.getBoundingClientRect();
+    const xy = _xy(e);
+    pDrag = { sx:xy.x, sy:xy.y, x0:pRect.left-cwRect.left, y0:pRect.top-cwRect.top, w:pRect.width, h:pRect.height };
+    panel.style.left = pDrag.x0+'px'; panel.style.top = pDrag.y0+'px';
+    panel.style.right = 'auto'; panel.style.bottom = 'auto';
+    panel.style.width = pDrag.w+'px'; panel.style.maxWidth = 'none';
+    head.classList.add('dragging');
+    e.preventDefault(); e.stopPropagation();
+  }
+  function pMove(e){
+    if(!pDrag) return;
+    const xy = _xy(e);
+    const cwRect = cw.getBoundingClientRect();
+    let nx = pDrag.x0 + (xy.x - pDrag.sx);
+    let ny = pDrag.y0 + (xy.y - pDrag.sy);
+    nx = Math.max(0, Math.min(Math.max(0,cwRect.width - pDrag.w), nx));
+    ny = Math.max(0, Math.min(Math.max(0,cwRect.height - pDrag.h), ny));
+    panel.style.left = nx+'px'; panel.style.top = ny+'px';
+    if(e.cancelable) e.preventDefault();
+  }
+  function pEnd(){ if(!pDrag) return; pDrag = null; head.classList.remove('dragging'); }
+  head.addEventListener('mousedown', pStart);
+  head.addEventListener('touchstart', pStart, {passive:false});
+  window.addEventListener('mousemove', pMove);
+  window.addEventListener('touchmove', pMove, {passive:false});
+  window.addEventListener('mouseup', pEnd);
+  window.addEventListener('touchend', pEnd);
+  window.addEventListener('touchcancel', pEnd);
+}
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(_setupLiveTanDrag, 150));
+} else {
+  setTimeout(_setupLiveTanDrag, 150);
+}
+
+// ════════════ 시간 탐색 슬라이더 ════════════
+function setLiveScroll(v){
+  v = parseInt(v); if(isNaN(v)) v = 0;
+  const total = liveBuf.length;
+  const maxStart = Math.max(0, total - liveWin);
+  if(v >= maxStart){
+    // 슬라이더가 최우측이면 라이브(최신 추종) 모드
+    liveStartIdx = null;
+  } else {
+    liveStartIdx = Math.max(0, v);
+  }
+  _liveNeedsUpdate = true;
+  flushLiveChart();
+  _updateLiveScrollUI();
+}
+function goLiveLatest(){
+  liveStartIdx = null;
+  _liveNeedsUpdate = true;
+  flushLiveChart();
+  _updateLiveScrollUI();
+}
+function _updateLiveScrollUI(){
+  const sl = document.getElementById('live-scroll');
+  const info = document.getElementById('live-scroll-info');
+  const btn = document.getElementById('live-scroll-latest');
+  if(!sl || !info) return;
+  const total = liveBuf.length;
+  const maxStart = Math.max(0, total - liveWin);
+  // 데이터가 liveWin 미만이면 슬라이더 비활성
+  const hasOverflow = maxStart > 0;
+  sl.disabled = !hasOverflow;
+  sl.max = maxStart;
+  if(liveStartIdx === null){
+    // 라이브: 슬라이더는 우측 끝
+    sl.value = maxStart;
+    info.classList.add('live');
+    info.textContent = total > 0 ? `최신 (${Math.max(1, total - liveWin + 1)}~${total})` : '대기 중';
+    if(btn){ btn.classList.add('live'); btn.disabled = true; }
+  } else {
+    const s = Math.max(0, Math.min(maxStart, liveStartIdx));
+    sl.value = s;
+    info.classList.remove('live');
+    const showStart = s + 1;
+    const showEnd = Math.min(total, s + liveWin);
+    info.textContent = `${showStart}~${showEnd} / ${total}`;
+    if(btn){ btn.classList.remove('live'); btn.disabled = false; }
+  }
+}
+// pushLiveBuf에 훅을 걸어 새 데이터마다 슬라이더 갱신
+const _origPushLiveBufForScroll = pushLiveBuf;
+pushLiveBuf = function(...args){
+  _origPushLiveBufForScroll.apply(this, args);
+  // 라이브 모드면 자동으로 최신 위치 추종 → 슬라이더 max만 갱신
+  // 정지 모드면 slider 값은 그대로, 텍스트만 갱신 (총 개수 변경 반영)
+  _updateLiveScrollUI();
+};
+// setLiveWin 변경 시 — 슬라이더 max도 갱신
+const _origSetLiveWin = setLiveWin;
+setLiveWin = function(v){
+  _origSetLiveWin.apply(this, arguments);
+  _updateLiveScrollUI();
+};
+// clearLiveBuf 시 — 라이브 모드로 복귀
+const _origClearLiveBufForScroll = clearLiveBuf;
+clearLiveBuf = function(){
+  liveStartIdx = null;
+  _origClearLiveBufForScroll.apply(this, arguments);
+  _updateLiveScrollUI();
+};
+// 초기 상태 표시
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(_updateLiveScrollUI, 200));
+} else {
+  setTimeout(_updateLiveScrollUI, 200);
+}
+// ════════════ /시간 탐색 슬라이더 ════════════
+
+// flushLiveChart에서 호출되는 renderLiveSel 직후, 두 점 마커도 갱신
+const _origRenderLiveSel = (typeof renderLiveSel === 'function') ? renderLiveSel : null;
+if(_origRenderLiveSel){
+  renderLiveSel = function(){
+    _origRenderLiveSel.apply(this, arguments);
+    try { renderLiveTangent(); } catch(_) {}
+  };
+}
+
+// 수신 정지 상태에서 사용자가 그래프 클릭 시 안내(1회) 표시
+function _maybeShowTangentHint(){
+  if(_liveTanHintShown) return;
+  if(typeof streaming === 'undefined' || streaming) return;
+  if(!liveBuf.length) return;
+  _liveTanHintShown = true;
+  const hint = document.getElementById('live-tan-hint');
+  if(!hint) return;
+  hint.classList.add('show');
+  setTimeout(()=>hint.classList.remove('show'), 4500);
+}
+// 수신 시작/중지 상태가 변할 때 안내 다시 가능
+const _origUpdStreamBtn = (typeof updStreamBtn === 'function') ? updStreamBtn : null;
+if(_origUpdStreamBtn){
+  updStreamBtn = function(){
+    _origUpdStreamBtn.apply(this, arguments);
+    if(typeof streaming !== 'undefined' && !streaming){
+      _liveTanHintShown = false;
+      setTimeout(_maybeShowTangentHint, 100);
+    } else {
+      // 수신 시작 시 두 점 분석 마커는 유지하지만 첫 클릭 임시값은 초기화
+      _liveTanFirst = null;
+      try { renderLiveTangent(); } catch(_){}
+    }
+  };
+}
+
+// ════════════ 데이터 분석 (저장된 결과) ════════════
+let savedRangeAnalyses = [];   // [{id, savedAt, startTime, endTime, count, series:[...]}]
+let savedTangentAnalyses = []; // [{id, savedAt, timeA, timeB, dt, series:[...]}]
+let _daSeqRange = 0;
+let _daSeqTan = 0;
+
+function saveCurrentRangeAnalysis(btn){
+  const stats = computeLiveStats();
+  if(!stats){ toast('⚠️ 저장할 구간 통계가 없어요'); return; }
+  _daSeqRange += 1;
+  savedRangeAnalyses.push({
+    id: 'r' + Date.now() + '-' + _daSeqRange,
+    seq: _daSeqRange,
+    source: 'live',
+    savedAt: now(),
+    unit: uLbl(),
+    startTime: stats.startTime,
+    endTime: stats.endTime,
+    count: stats.count,
+    series: stats.series.map(s => ({
+      label:s.label, color:s.color, n:s.n,
+      mean:s.mean, max:s.max, min:s.min, std:s.std
+    }))
+  });
+  if(btn){
+    btn.classList.add('saved');
+    const old = btn.innerHTML; btn.innerHTML = '✓ 저장됨';
+    setTimeout(()=>{ btn.classList.remove('saved'); btn.innerHTML = old; }, 1200);
+  }
+  toast('✅ 분석 탭에 저장했어요');
+  if(document.getElementById('a-tab').classList.contains('on')) renderAnalysisTab();
+}
+
+function saveCurrentTangentAnalysis(btn){
+  const tan = computeLiveTangent();
+  if(!tan){ toast('⚠️ 저장할 두 점 분석이 없어요'); return; }
+  _daSeqTan += 1;
+  savedTangentAnalyses.push({
+    id: 't' + Date.now() + '-' + _daSeqTan,
+    seq: _daSeqTan,
+    source: 'live',
+    savedAt: now(),
+    unit: uLbl(),
+    timeA: tan.timeA, timeB: tan.timeB,
+    dt: tan.dt,
+    series: tan.series.map(s => ({
+      label:s.label, color:s.color, valid:s.valid,
+      ya:s.ya, yb:s.yb, dy:s.dy, slope:s.slope
+    }))
+  });
+  if(btn){
+    btn.classList.add('saved');
+    const old = btn.innerHTML; btn.innerHTML = '✓ 저장됨';
+    setTimeout(()=>{ btn.classList.remove('saved'); btn.innerHTML = old; }, 1200);
+  }
+  toast('✅ 분석 탭에 저장했어요');
+  if(document.getElementById('a-tab').classList.contains('on')) renderAnalysisTab();
+}
+
+function deleteRangeAnalysis(id){
+  savedRangeAnalyses = savedRangeAnalyses.filter(a => a.id !== id);
+  renderAnalysisTab();
+}
+function deleteTangentAnalysis(id){
+  savedTangentAnalyses = savedTangentAnalyses.filter(a => a.id !== id);
+  renderAnalysisTab();
+}
+function clearAllRangeAnalyses(){
+  if(!savedRangeAnalyses.length){ toast('지울 분석이 없어요'); return; }
+  if(!confirm('저장된 구간 통계 분석을 모두 삭제할까요?')) return;
+  savedRangeAnalyses = [];
+  renderAnalysisTab();
+  toast('🗑 구간 통계 분석을 모두 삭제했어요');
+}
+function clearAllTangentAnalyses(){
+  if(!savedTangentAnalyses.length){ toast('지울 분석이 없어요'); return; }
+  if(!confirm('저장된 두 점 분석을 모두 삭제할까요?')) return;
+  savedTangentAnalyses = [];
+  renderAnalysisTab();
+  toast('🗑 두 점 분석을 모두 삭제했어요');
+}
+
+// 모든 채널 라벨 모음 (분석 데이터 기준)
+function _collectChannelLabels(items){
+  const seen = new Map(); // label → color (첫 등장 색)
+  items.forEach(a => (a.series||[]).forEach(s => {
+    if(!seen.has(s.label)) seen.set(s.label, s.color);
+  }));
+  return [...seen.entries()].map(([label, color]) => ({label, color}));
+}
+
+function _fmtNum(v, digits){
+  if(v === null || v === undefined || isNaN(v)) return '-';
+  const d = (digits === undefined) ? 2 : digits;
+  if(Math.abs(v) >= 1e5 || (Math.abs(v) > 0 && Math.abs(v) < 1e-3)) return v.toExponential(2);
+  const m = Math.pow(10, d);
+  return (Math.round(v * m) / m).toFixed(d);
+}
+
+function renderAnalysisTab(){
+  // ── 구간 통계 분석 표 ──
+  const rangeBody = document.getElementById('da-range-body');
+  const rangeCount = document.getElementById('da-range-count');
+  if(rangeCount) rangeCount.textContent = savedRangeAnalyses.length + '개';
+  if(rangeBody){
+    if(!savedRangeAnalyses.length){
+      rangeBody.innerHTML = '<div class="da-empty">저장된 구간 통계가 없어요.<br>그래프를 드래그해 구간을 지정한 뒤<br>📊 패널의 <b>💾 저장</b> 버튼을 누르면 여기에 누적돼요.</div>';
+    } else {
+      const channels = _collectChannelLabels(savedRangeAnalyses);
+      const items = savedRangeAnalyses;
+      // 표 헤더 (각 분석이 한 열)
+      let html = '<div class="da-table-wrap"><table class="da-table"><thead><tr><th>항목</th>';
+      items.forEach(a => {
+        const srcBadge = (a.source === 'obs')
+          ? '<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:var(--pur);color:#fff;font-weight:800;margin-left:3px">📊 수집</span>'
+          : '<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:var(--acc);color:#fff;font-weight:800;margin-left:3px">📡 실시간</span>';
+        html += `<th><div class="da-col-head">
+          <span><span class="da-col-title">분석 ${a.seq}</span>${srcBadge}<br><span class="da-col-sub">${a.savedAt} 저장</span></span>
+          <button class="da-col-del" onclick="deleteRangeAnalysis('${a.id}')" title="이 분석 삭제">✕</button>
+        </div></th>`;
+      });
+      html += '</tr></thead><tbody>';
+      // 메타 행
+      html += '<tr><td>시각 범위</td>' + items.map(a => {
+        const idLine = (a.source === 'obs' && a.startId!=null) ? `<br><span style="font-size:10px;color:var(--sub)">#${a.startId}~#${a.endId}</span>` : '';
+        return `<td>${a.startTime}<br>~ ${a.endTime}${idLine}</td>`;
+      }).join('') + '</tr>';
+      html += '<tr><td>데이터 수</td>' + items.map(a => `<td>${a.count}</td>`).join('') + '</tr>';
+      // 채널별 4행 (평균/최대/최소/표준편차)
+      channels.forEach(ch => {
+        html += `<tr class="da-ch-row"><td colspan="${items.length+1}"><span class="da-ch-dot" style="background:${ch.color}"></span>${ch.label} <span style="font-weight:500;color:var(--sub)">(단위: ${items[0]?.unit||''})</span></td></tr>`;
+        ['mean','max','min','std'].forEach(stat => {
+          const sLbl = {mean:'평균', max:'최대', min:'최소', std:'표준편차'}[stat];
+          html += `<tr><td>${sLbl}</td>` + items.map(a => {
+            const s = (a.series||[]).find(x => x.label === ch.label);
+            if(!s || s.n === 0) return '<td style="color:var(--muted)">-</td>';
+            return `<td>${_fmtNum(s[stat], 2)}</td>`;
+          }).join('') + '</tr>';
+        });
+      });
+      html += '</tbody></table></div>';
+      rangeBody.innerHTML = html;
+    }
+  }
+
+  // ── 두 점 분석 표 ──
+  const tanBody = document.getElementById('da-tan-body');
+  const tanCount = document.getElementById('da-tan-count');
+  if(tanCount) tanCount.textContent = savedTangentAnalyses.length + '개';
+  if(tanBody){
+    if(!savedTangentAnalyses.length){
+      tanBody.innerHTML = '<div class="da-empty">저장된 두 점 분석이 없어요.<br>⏹ <b>수신 정지</b> 후 그래프 위 두 지점을 클릭하고<br>📐 패널의 <b>💾 저장</b> 버튼을 누르면 여기에 누적돼요.</div>';
+    } else {
+      const channels = _collectChannelLabels(savedTangentAnalyses);
+      const items = savedTangentAnalyses;
+      let html = '<div class="da-table-wrap"><table class="da-table"><thead><tr><th>항목</th>';
+      items.forEach(a => {
+        const srcBadge = (a.source === 'obs')
+          ? '<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:var(--pur);color:#fff;font-weight:800;margin-left:3px">📊 수집</span>'
+          : '<span style="display:inline-block;font-size:9px;padding:1px 6px;border-radius:8px;background:var(--acc);color:#fff;font-weight:800;margin-left:3px">📡 실시간</span>';
+        html += `<th><div class="da-col-head">
+          <span><span class="da-col-title">분석 ${a.seq}</span>${srcBadge}<br><span class="da-col-sub">${a.savedAt} 저장</span></span>
+          <button class="da-col-del" onclick="deleteTangentAnalysis('${a.id}')" title="이 분석 삭제">✕</button>
+        </div></th>`;
+      });
+      html += '</tr></thead><tbody>';
+      html += '<tr><td>두 점</td>' + items.map(a => {
+        const idLine = (a.source === 'obs' && a.idA != null) ? `<br><span style="font-size:10px;color:var(--sub)">A: #${a.idA} · B: #${a.idB}</span>` : '';
+        return `<td>A: ${a.timeA}<br>B: ${a.timeB}${idLine}</td>`;
+      }).join('') + '</tr>';
+      html += '<tr><td>Δt (초)</td>' + items.map(a => `<td>${_fmtNum(a.dt, 2)}</td>`).join('') + '</tr>';
+      channels.forEach(ch => {
+        html += `<tr class="da-ch-row"><td colspan="${items.length+1}"><span class="da-ch-dot" style="background:${ch.color}"></span>${ch.label} <span style="font-weight:500;color:var(--sub)">(단위: ${items[0]?.unit||''})</span></td></tr>`;
+        [
+          {key:'ya', lbl:'y(A)'},
+          {key:'yb', lbl:'y(B)'},
+          {key:'dy', lbl:'Δy'},
+          {key:'slope', lbl:'기울기 (값/초)'}
+        ].forEach(({key, lbl}) => {
+          html += `<tr><td>${lbl}</td>` + items.map(a => {
+            const s = (a.series||[]).find(x => x.label === ch.label);
+            if(!s || !s.valid) return '<td style="color:var(--muted)">-</td>';
+            return `<td>${_fmtNum(s[key], 3)}</td>`;
+          }).join('') + '</tr>';
+        });
+      });
+      html += '</tbody></table></div>';
+      tanBody.innerHTML = html;
+    }
+  }
+}
+
+function dlAnalysisCSV(kind){
+  const rows = [];
+  if(kind === 'range'){
+    if(!savedRangeAnalyses.length){ toast('저장된 구간 통계가 없어요'); return; }
+    rows.push(['분석번호','저장시각','시작','종료','데이터수','채널','평균','최대','최소','표준편차','단위'].join(','));
+    savedRangeAnalyses.forEach(a => (a.series||[]).forEach(s => {
+      rows.push([a.seq, a.savedAt, a.startTime, a.endTime, a.count, s.label,
+        _fmtNum(s.mean,3), _fmtNum(s.max,3), _fmtNum(s.min,3), _fmtNum(s.std,3), a.unit].join(','));
+    }));
+  } else {
+    if(!savedTangentAnalyses.length){ toast('저장된 두 점 분석이 없어요'); return; }
+    rows.push(['분석번호','저장시각','A시각','B시각','dt(초)','채널','y(A)','y(B)','dy','기울기','단위'].join(','));
+    savedTangentAnalyses.forEach(a => (a.series||[]).forEach(s => {
+      rows.push([a.seq, a.savedAt, a.timeA, a.timeB, _fmtNum(a.dt,3), s.label,
+        s.valid?_fmtNum(s.ya,3):'', s.valid?_fmtNum(s.yb,3):'',
+        s.valid?_fmtNum(s.dy,3):'', s.valid?_fmtNum(s.slope,4):'', a.unit].join(','));
+    }));
+  }
+  const blob = new Blob(['\uFEFF'+rows.join('\n')], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (kind==='range'?'구간통계분석':'두점분석') + `_${new Date().toLocaleDateString('ko')}.csv`;
+  a.click();
+  toast('💾 CSV로 저장했어요');
+}
+// ════════════ /데이터 분석 ════════════
+
+// ════════════ 수집 그래프 — 구간 선택 / 두 점 분석 / 시간 탐색 ════════════
+let obsSel = null;             // {startIdx, endIdx} (recs 절대 인덱스)
+let _obsSelDrag = null;
+let _obsSelHintShown = false;
+let obsTangent = null;
+let _obsTanFirst = null;
+let _obsTanHintShown = false;
+let obsStartIdx = null;        // null이면 최신 추종, 정수면 그 인덱스부터 obsZoom개
+
+// ── 뷰 계산 헬퍼 ──
+function _obsViewStart(){
+  const total = recs.length;
+  if(obsStartIdx === null || obsStartIdx === undefined){
+    return Math.max(0, total - obsZoom);
+  }
+  const maxStart = Math.max(0, total - obsZoom);
+  return Math.max(0, Math.min(maxStart, obsStartIdx));
+}
+function _obsViewSlice(){
+  const start = _obsViewStart();
+  const end = Math.min(recs.length, start + obsZoom);
+  return recs.slice(start, end);
+}
+function _pxToObsViewIdx(px){
+  if(!chart) return -1;
+  const xs = chart.scales.x;
+  const len = chart.data.labels.length;
+  if(!xs || len <= 0) return -1;
+  const w = xs.right - xs.left;
+  if(w <= 0) return -1;
+  const ratio = (px - xs.left) / w;
+  let idx = Math.round(ratio * (len - 1));
+  return Math.max(0, Math.min(len - 1, idx));
+}
+function _obsViewIdxToRecIdx(viewIdx){ return _obsViewStart() + viewIdx; }
+function _recIdxToObsPx(recIdx){
+  if(!chart) return null;
+  const xs = chart.scales.x;
+  const len = chart.data.labels.length;
+  if(!xs || len <= 0) return null;
+  const off = _obsViewStart();
+  const v = recIdx - off;
+  if(len === 1) return (xs.left + xs.right) / 2;
+  const ratio = Math.max(0, Math.min(1, v / (len - 1)));
+  return xs.left + ratio * (xs.right - xs.left);
+}
+function _obsSelPos(e){
+  const canvas = document.getElementById('mc');
+  const rect = canvas.getBoundingClientRect();
+  const cx = (e.touches && e.touches[0]) ? e.touches[0].clientX
+           : (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX
+           : e.clientX;
+  return cx - rect.left;
+}
+
+// ── 구간 통계 계산 ──
+function computeObsStats(){
+  if(!obsSel || !recs.length) return null;
+  let s = Math.min(obsSel.startIdx, obsSel.endIdx);
+  let e = Math.max(obsSel.startIdx, obsSel.endIdx);
+  s = Math.max(0, s); e = Math.min(recs.length - 1, e);
+  if(s > e) return null;
+  const slice = recs.slice(s, e + 1);
+  const series = [];
+  for(let ci = 0; ci < N; ci++){
+    let values = slice.map(r => r.vals[ci]).filter(v => v !== null && v !== undefined && !isNaN(v));
+    const n = values.length;
+    const label = TNAMES[ci] || ('센서'+(ci+1));
+    const color = PAL[ci];
+    if(n === 0){ series.push({label, color, n:0}); continue; }
+    const sum = values.reduce((a,b)=>a+b, 0);
+    const mean = sum / n;
+    let max = values[0], min = values[0];
+    for(let i = 1; i < n; i++){ if(values[i] > max) max = values[i]; if(values[i] < min) min = values[i]; }
+    let sse = 0;
+    for(let i = 0; i < n; i++){ const d = values[i] - mean; sse += d * d; }
+    const std = n > 1 ? Math.sqrt(sse / (n - 1)) : 0;
+    series.push({label, color, n, mean, max, min, std});
+  }
+  return {
+    startTime: recs[s].time, endTime: recs[e].time,
+    startId: recs[s].id, endId: recs[e].id,
+    count: e - s + 1, series
+  };
+}
+
+// ── 두 점 분석(기울기) 계산 ──
+function computeObsTangent(){
+  if(!obsTangent || !recs.length) return null;
+  const a = Math.max(0, Math.min(recs.length-1, obsTangent.a));
+  const b = Math.max(0, Math.min(recs.length-1, obsTangent.b));
+  if(a === b) return null;
+  const recA = recs[a], recB = recs[b];
+  const dt = _dtSeconds(recA.time, recB.time);
+  const series = [];
+  for(let ci = 0; ci < N; ci++){
+    const ya = recA.vals[ci], yb = recB.vals[ci];
+    const label = TNAMES[ci] || ('센서'+(ci+1));
+    const color = PAL[ci];
+    if(ya == null || yb == null || isNaN(ya) || isNaN(yb)){
+      series.push({label, color, valid:false}); continue;
+    }
+    const dy = yb - ya;
+    const slope = (dt !== 0) ? dy / dt : null;
+    series.push({label, color, valid:true, ya, yb, dy, slope});
+  }
+  return {
+    timeA: recA.time, timeB: recB.time,
+    idA: recA.id, idB: recB.id,
+    dt, idxA:a, idxB:b, series
+  };
+}
+
+// ── 클릭/드래그 처리 ──
+function handleObsTangentClick(px){
+  if(!chart || !recs.length) return;
+  const v = _pxToObsViewIdx(px);
+  if(v < 0) return;
+  const recIdx = _obsViewIdxToRecIdx(v);
+  if(recIdx < 0 || recIdx >= recs.length) return;
+  if(_obsTanFirst === null){
+    _obsTanFirst = recIdx;
+    obsTangent = null;
+    renderObsTangent();
+    return;
+  }
+  if(recIdx === _obsTanFirst){
+    _obsTanFirst = null;
+    obsTangent = null;
+    renderObsTangent();
+    return;
+  }
+  obsTangent = { a: Math.min(_obsTanFirst, recIdx), b: Math.max(_obsTanFirst, recIdx) };
+  _obsTanFirst = null;
+  renderObsTangent();
+}
+
+function clearObsSel(){
+  obsSel = null; _obsSelDrag = null;
+  const overlay = document.getElementById('obs-sel-overlay');
+  const panel = document.getElementById('obs-stats-panel');
+  const cw = document.getElementById('obs-cw');
+  if(overlay) overlay.classList.remove('active');
+  if(panel) panel.classList.remove('show');
+  if(cw) cw.classList.remove('has-selection');
+}
+function clearObsTangent(){
+  obsTangent = null; _obsTanFirst = null;
+  renderObsTangent();
+}
+
+// ── 렌더: 구간 통계 ──
+function renderObsSel(){
+  const overlay = document.getElementById('obs-sel-overlay');
+  const panel = document.getElementById('obs-stats-panel');
+  const cw = document.getElementById('obs-cw');
+  if(!overlay || !panel || !cw || !chart) return;
+  if(!obsSel){
+    overlay.classList.remove('active');
+    panel.classList.remove('show');
+    cw.classList.remove('has-selection');
+    return;
+  }
+  const x1 = _recIdxToObsPx(Math.min(obsSel.startIdx, obsSel.endIdx));
+  const x2 = _recIdxToObsPx(Math.max(obsSel.startIdx, obsSel.endIdx));
+  const xs = chart.scales.x;
+  if(x1 == null || x2 == null || !xs){ overlay.classList.remove('active'); return; }
+  const left = Math.max(xs.left, Math.min(x1, x2));
+  const right = Math.min(xs.right, Math.max(x1, x2));
+  const ya = chart.chartArea;
+  if(right - left < 1){ overlay.classList.remove('active'); }
+  else {
+    overlay.style.left = left + 'px';
+    overlay.style.width = (right - left) + 'px';
+    overlay.style.top = (ya ? ya.top : 0) + 'px';
+    overlay.style.height = (ya ? (ya.bottom - ya.top) : cw.clientHeight) + 'px';
+    overlay.classList.add('active');
+    cw.classList.add('has-selection');
+  }
+  const stats = computeObsStats();
+  if(!stats){ panel.classList.remove('show'); return; }
+  const meta = document.getElementById('obs-stats-meta');
+  if(meta) meta.textContent = `#${stats.startId} ~ #${stats.endId}  ·  ${stats.count}개`;
+  const body = document.getElementById('obs-stats-body');
+  if(body){
+    if(!stats.series.length){
+      body.innerHTML = '<div class="live-stats-empty">표시된 채널이 없어요</div>';
+    } else {
+      const u = uLbl();
+      const fmt = v => (v === undefined || v === null || isNaN(v)) ? '-' : (Math.round(v * 100) / 100).toFixed(2);
+      const rows = stats.series.map(ss => {
+        if(ss.n === 0){
+          return `<tr><td><span class="live-stats-name" style="background:${ss.color}">${ss.label}</span></td>
+            <td colspan="4" style="text-align:center;color:var(--muted)">데이터 없음</td></tr>`;
+        }
+        return `<tr>
+          <td><span class="live-stats-name" style="background:${ss.color}">${ss.label}</span></td>
+          <td>${fmt(ss.mean)}</td><td>${fmt(ss.max)}</td><td>${fmt(ss.min)}</td><td>${fmt(ss.std)}</td>
+        </tr>`;
+      }).join('');
+      body.innerHTML = `<table class="live-stats-table">
+        <thead><tr><th>채널</th><th>평균(${u})</th><th>최대(${u})</th><th>최소(${u})</th><th>표준편차</th></tr></thead>
+        <tbody>${rows}</tbody></table>`;
+    }
+    panel.classList.add('show');
+  }
+}
+
+// ── 렌더: 두 점 분석 + 기울기 선 ──
+function renderObsTangent(){
+  const panel = document.getElementById('obs-tan-panel');
+  const mkA = document.getElementById('obs-tan-mk-a');
+  const mkB = document.getElementById('obs-tan-mk-b');
+  const svg = document.getElementById('obs-tan-svg');
+  if(!panel || !mkA || !mkB || !chart) return;
+  const _hideSvg = () => { if(svg){ svg.classList.remove('show'); svg.innerHTML = ''; } };
+
+  function placeMarker(el, recIdx){
+    if(recIdx == null){ el.style.display = 'none'; return; }
+    const x = _recIdxToObsPx(recIdx);
+    const ya = chart.chartArea;
+    if(x == null || !ya){ el.style.display = 'none'; return; }
+    const xs = chart.scales.x;
+    if(xs && (x < xs.left - 1 || x > xs.right + 1)){ el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.style.left = x + 'px';
+    el.style.top = ya.top + 'px';
+    el.style.height = (ya.bottom - ya.top) + 'px';
+  }
+  if(_obsTanFirst !== null){
+    placeMarker(mkA, _obsTanFirst);
+    mkB.style.display = 'none';
+    panel.classList.remove('show');
+    _hideSvg();
+    return;
+  }
+  if(!obsTangent){
+    mkA.style.display = 'none'; mkB.style.display = 'none';
+    panel.classList.remove('show');
+    _hideSvg();
+    return;
+  }
+  placeMarker(mkA, obsTangent.a);
+  placeMarker(mkB, obsTangent.b);
+
+  const tan = computeObsTangent();
+  if(!tan){ panel.classList.remove('show'); _hideSvg(); return; }
+
+  // SVG 슬로프 라인
+  if(svg){
+    const xA = _recIdxToObsPx(obsTangent.a);
+    const xB = _recIdxToObsPx(obsTangent.b);
+    const ya = chart.chartArea;
+    const yScale = chart.scales.y;
+    if(xA != null && xB != null && xA !== xB && ya && yScale){
+      const cw = document.getElementById('obs-cw');
+      const w = cw ? cw.clientWidth : (ya.right + 60);
+      const h = cw ? cw.clientHeight : (ya.bottom + 60);
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      svg.setAttribute('width', w);
+      svg.setAttribute('height', h);
+      let inner = '';
+      const clipId = 'obs-tan-clip-' + Date.now();
+      inner += `<defs><clipPath id="${clipId}"><rect x="${ya.left}" y="${ya.top}" width="${ya.right-ya.left}" height="${ya.bottom-ya.top}"/></clipPath></defs>`;
+      inner += `<g clip-path="url(#${clipId})">`;
+      tan.series.forEach(s => {
+        if(!s.valid) return;
+        const pyA = yScale.getPixelForValue(s.ya);
+        const pyB = yScale.getPixelForValue(s.yb);
+        if(!isFinite(pyA) || !isFinite(pyB)) return;
+        const dx = xB - xA, dy = pyB - pyA;
+        const slopePx = dy / dx;
+        const x1 = ya.left,  y1 = pyA + slopePx * (x1 - xA);
+        const x2 = ya.right, y2 = pyA + slopePx * (x2 - xA);
+        inner += `<line x1="${x1}" y1="${y1}" x2="${xA}" y2="${pyA}" stroke="${s.color}" stroke-width="1.8" stroke-dasharray="5,3" opacity="0.55"/>`;
+        inner += `<line x1="${xB}" y1="${pyB}" x2="${x2}" y2="${y2}" stroke="${s.color}" stroke-width="1.8" stroke-dasharray="5,3" opacity="0.55"/>`;
+        inner += `<line x1="${xA}" y1="${pyA}" x2="${xB}" y2="${pyB}" stroke="${s.color}" stroke-width="3" opacity="0.9"/>`;
+        inner += `<circle cx="${xA}" cy="${pyA}" r="5" fill="${s.color}" stroke="#fff" stroke-width="2"/>`;
+        inner += `<circle cx="${xB}" cy="${pyB}" r="5" fill="${s.color}" stroke="#fff" stroke-width="2"/>`;
+      });
+      inner += `</g>`;
+      svg.innerHTML = inner;
+      svg.classList.add('show');
+    } else { _hideSvg(); }
+  }
+
+  const meta = document.getElementById('obs-tan-meta');
+  if(meta){
+    const dtTxt = (Math.abs(tan.dt) < 0.001 && tan.dt !== 0) ? tan.dt.toExponential(2) : (Math.round(tan.dt*100)/100).toString();
+    meta.textContent = `A: #${tan.idA} (${tan.timeA})  →  B: #${tan.idB} (${tan.timeB})  ·  Δt = ${dtTxt}초`;
+  }
+  const body = document.getElementById('obs-tan-body');
+  if(body){
+    const u = uLbl();
+    const fmt = v => (v === undefined || v === null || isNaN(v)) ? '-' : (Math.round(v * 1000) / 1000).toFixed(3);
+    const fmtSlope = v => {
+      if(v === null || v === undefined || !isFinite(v)) return '-';
+      if(Math.abs(v) >= 1000 || (Math.abs(v) < 0.001 && v !== 0)) return v.toExponential(2);
+      return (Math.round(v * 1000) / 1000).toFixed(3);
+    };
+    const rows = tan.series.map(s => {
+      if(!s.valid){
+        return `<tr><td><span class="live-stats-name" style="background:${s.color}">${s.label}</span></td>
+          <td colspan="4" style="text-align:center;color:var(--muted)">데이터 없음</td></tr>`;
+      }
+      return `<tr>
+        <td><span class="live-stats-name" style="background:${s.color}">${s.label}</span></td>
+        <td>${fmt(s.ya)}</td><td>${fmt(s.yb)}</td>
+        <td><b>${fmt(s.dy)}</b></td><td><b>${fmtSlope(s.slope)}</b></td>
+      </tr>`;
+    }).join('');
+    body.innerHTML = `<table class="live-tan-table">
+      <thead><tr><th>채널</th><th>y(A) ${u}</th><th>y(B) ${u}</th><th>Δy</th><th>기울기 (${u}/초)</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+    panel.classList.add('show');
+  }
+}
+
+// ── 드래그/클릭 + 패널 드래그 셋업 ──
+function _setupObsSel(){
+  const canvas = document.getElementById('mc');
+  const cw = document.getElementById('obs-cw');
+  if(!canvas || !cw) return;
+  function start(e){
+    if(!chart || !recs.length) return;
+    if(e.target && e.target.closest && (e.target.closest('.live-stats-panel') || e.target.closest('.live-tan-panel'))) return;
+    e.preventDefault();
+    const x = _obsSelPos(e);
+    const xs = chart.scales.x;
+    if(!xs) return;
+    if(x < xs.left - 4 || x > xs.right + 4) return;
+    _obsSelDrag = { x0: Math.max(xs.left, Math.min(xs.right, x)) };
+  }
+  function move(e){
+    if(!_obsSelDrag || !chart) return;
+    const x = _obsSelPos(e);
+    const xs = chart.scales.x;
+    if(!xs) return;
+    const cx = Math.max(xs.left, Math.min(xs.right, x));
+    const overlay = document.getElementById('obs-sel-overlay');
+    const ya = chart.chartArea;
+    const left = Math.min(_obsSelDrag.x0, cx);
+    const right = Math.max(_obsSelDrag.x0, cx);
+    overlay.style.left = left + 'px';
+    overlay.style.width = (right - left) + 'px';
+    overlay.style.top = (ya ? ya.top : 0) + 'px';
+    overlay.style.height = (ya ? (ya.bottom - ya.top) : cw.clientHeight) + 'px';
+    overlay.classList.add('active');
+    if(e.cancelable) e.preventDefault();
+  }
+  function end(e){
+    if(!_obsSelDrag) return;
+    const x0 = _obsSelDrag.x0;
+    _obsSelDrag = null;
+    const x1 = _obsSelPos(e);
+    if(Math.abs(x1 - x0) < 6){
+      // 짧은 클릭 → 두 점 분석
+      handleObsTangentClick(x0);
+      renderObsSel();
+      return;
+    }
+    const v0 = _pxToObsViewIdx(Math.min(x0, x1));
+    const v1 = _pxToObsViewIdx(Math.max(x0, x1));
+    if(v0 < 0 || v1 < 0){ clearObsSel(); return; }
+    obsSel = {
+      startIdx: _obsViewIdxToRecIdx(v0),
+      endIdx: _obsViewIdxToRecIdx(v1)
+    };
+    renderObsSel();
+  }
+  canvas.addEventListener('mousedown', start);
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', end);
+  canvas.addEventListener('touchcancel', end);
+  window.addEventListener('resize', ()=>{ if(obsSel || obsTangent) setTimeout(()=>{ renderObsSel(); renderObsTangent(); }, 50); });
+
+  // 패널 드래그 (구간/두 점 공통)
+  ['obs-stats-panel', 'obs-tan-panel'].forEach(id => {
+    const panel = document.getElementById(id);
+    if(!panel) return;
+    const head = panel.querySelector('.live-stats-head, .live-tan-head');
+    if(!head) return;
+    let pDrag = null;
+    const _xy = e => ({
+      x:(e.touches&&e.touches[0])?e.touches[0].clientX:(e.changedTouches&&e.changedTouches[0])?e.changedTouches[0].clientX:e.clientX,
+      y:(e.touches&&e.touches[0])?e.touches[0].clientY:(e.changedTouches&&e.changedTouches[0])?e.changedTouches[0].clientY:e.clientY
+    });
+    function pStart(e){
+      if(e.target && e.target.closest && (e.target.closest('.live-stats-close')||e.target.closest('.live-stats-save'))) return;
+      const cwRect = cw.getBoundingClientRect();
+      const pRect = panel.getBoundingClientRect();
+      const xy = _xy(e);
+      pDrag = { sx:xy.x, sy:xy.y, x0:pRect.left-cwRect.left, y0:pRect.top-cwRect.top, w:pRect.width, h:pRect.height };
+      panel.style.left = pDrag.x0+'px'; panel.style.top = pDrag.y0+'px';
+      panel.style.right = 'auto'; panel.style.bottom = 'auto';
+      panel.style.width = pDrag.w+'px'; panel.style.maxWidth = 'none';
+      head.classList.add('dragging');
+      e.preventDefault(); e.stopPropagation();
+    }
+    function pMove(e){
+      if(!pDrag) return;
+      const xy = _xy(e);
+      const cwRect = cw.getBoundingClientRect();
+      let nx = pDrag.x0 + (xy.x - pDrag.sx);
+      let ny = pDrag.y0 + (xy.y - pDrag.sy);
+      nx = Math.max(0, Math.min(Math.max(0,cwRect.width - pDrag.w), nx));
+      ny = Math.max(0, Math.min(Math.max(0,cwRect.height - pDrag.h), ny));
+      panel.style.left = nx+'px'; panel.style.top = ny+'px';
+      if(e.cancelable) e.preventDefault();
+    }
+    function pEnd(){ if(!pDrag) return; pDrag = null; head.classList.remove('dragging'); }
+    head.addEventListener('mousedown', pStart);
+    head.addEventListener('touchstart', pStart, {passive:false});
+    window.addEventListener('mousemove', pMove);
+    window.addEventListener('touchmove', pMove, {passive:false});
+    window.addEventListener('mouseup', pEnd);
+    window.addEventListener('touchend', pEnd);
+    window.addEventListener('touchcancel', pEnd);
+  });
+
+  // 첫 사용 안내
+  function maybeShowObsHint(){
+    if(_obsSelHintShown) return;
+    if(recs.length < 5) return;
+    if(obsSel) return;
+    _obsSelHintShown = true;
+    const hint = document.getElementById('obs-stats-hint');
+    if(!hint) return;
+    hint.classList.add('show');
+    setTimeout(()=>hint.classList.remove('show'), 5000);
+  }
+  // recordReading/addRow 같은 기록 함수 직접 후킹 대신 updChart 호출 시 표시
+  const _origUpdChart = updChart;
+  updChart = function(...args){
+    _origUpdChart.apply(this, args);
+    if(document.getElementById('g-tab')?.classList.contains('on')) maybeShowObsHint();
+  };
+}
+
+// ── 시간 탐색 슬라이더 ──
+function setObsScroll(v){
+  v = parseInt(v); if(isNaN(v)) v = 0;
+  const total = recs.length;
+  const maxStart = Math.max(0, total - obsZoom);
+  if(v >= maxStart){ obsStartIdx = null; }
+  else { obsStartIdx = Math.max(0, v); }
+  updChart();
+}
+function goObsLatest(){
+  obsStartIdx = null;
+  updChart();
+}
+function _updateObsScrollUI(){
+  const sl = document.getElementById('obs-scroll');
+  const info = document.getElementById('obs-scroll-info');
+  const btn = document.getElementById('obs-scroll-latest');
+  if(!sl || !info) return;
+  const total = recs.length;
+  const maxStart = Math.max(0, total - obsZoom);
+  const hasOverflow = maxStart > 0;
+  sl.disabled = !hasOverflow;
+  sl.max = maxStart;
+  if(obsStartIdx === null){
+    sl.value = maxStart;
+    info.classList.add('live');
+    info.textContent = total > 0 ? `최신 (#${recs[Math.max(0, total-obsZoom)].id}~#${recs[total-1].id})` : '대기 중';
+    if(btn){ btn.classList.add('live'); btn.disabled = true; }
+  } else {
+    const s = Math.max(0, Math.min(maxStart, obsStartIdx));
+    sl.value = s;
+    info.classList.remove('live');
+    const showStart = s + 1;
+    const showEnd = Math.min(total, s + obsZoom);
+    info.textContent = `${showStart}~${showEnd} / ${total}`;
+    if(btn){ btn.classList.remove('live'); btn.disabled = false; }
+  }
+}
+
+// ── 분석 저장 (출처: 'obs') ──
+function saveCurrentObsRangeAnalysis(btn){
+  const stats = computeObsStats();
+  if(!stats){ toast('⚠️ 저장할 구간 통계가 없어요'); return; }
+  _daSeqRange += 1;
+  savedRangeAnalyses.push({
+    id: 'r' + Date.now() + '-' + _daSeqRange,
+    seq: _daSeqRange, source: 'obs',
+    savedAt: now(), unit: uLbl(),
+    startTime: stats.startTime, endTime: stats.endTime,
+    startId: stats.startId, endId: stats.endId,
+    count: stats.count,
+    series: stats.series.map(s => ({label:s.label, color:s.color, n:s.n, mean:s.mean, max:s.max, min:s.min, std:s.std}))
+  });
+  if(btn){
+    btn.classList.add('saved');
+    const old = btn.innerHTML; btn.innerHTML = '✓ 저장됨';
+    setTimeout(()=>{ btn.classList.remove('saved'); btn.innerHTML = old; }, 1200);
+  }
+  toast('✅ 분석 탭에 저장했어요');
+  if(document.getElementById('a-tab').classList.contains('on')) renderAnalysisTab();
+}
+function saveCurrentObsTangentAnalysis(btn){
+  const tan = computeObsTangent();
+  if(!tan){ toast('⚠️ 저장할 두 점 분석이 없어요'); return; }
+  _daSeqTan += 1;
+  savedTangentAnalyses.push({
+    id: 't' + Date.now() + '-' + _daSeqTan,
+    seq: _daSeqTan, source: 'obs',
+    savedAt: now(), unit: uLbl(),
+    timeA: tan.timeA, timeB: tan.timeB,
+    idA: tan.idA, idB: tan.idB,
+    dt: tan.dt,
+    series: tan.series.map(s => ({label:s.label, color:s.color, valid:s.valid, ya:s.ya, yb:s.yb, dy:s.dy, slope:s.slope}))
+  });
+  if(btn){
+    btn.classList.add('saved');
+    const old = btn.innerHTML; btn.innerHTML = '✓ 저장됨';
+    setTimeout(()=>{ btn.classList.remove('saved'); btn.innerHTML = old; }, 1200);
+  }
+  toast('✅ 분석 탭에 저장했어요');
+  if(document.getElementById('a-tab').classList.contains('on')) renderAnalysisTab();
+}
+
+// 셋업 호출
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(_setupObsSel, 200));
+} else {
+  setTimeout(_setupObsSel, 200);
+}
+// ════════════ /수집 그래프 분석 ════════════
 
 function dlLiveCSV(){
   if(!liveBuf.length){toast('💾 저장할 실시간 데이터가 없어요');return;}
