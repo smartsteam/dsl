@@ -16,8 +16,8 @@
       </div>
     </div>
 
-    <!-- Dashboard grid -->
-    <div class="mb-grid" id="mbGrid"></div>
+    <!-- Dashboard rows -->
+    <div class="mb-rows" id="mbRows"></div>
 
     <!-- Inline usage panel (shown when 이용방법 clicked) -->
     <div class="mb-howto" id="mbHowto" style="display:none;">
@@ -52,109 +52,113 @@
 </section>
 
 <style>
-.microbit-page .mb-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin-bottom: 24px;
-}
-.microbit-page .mb-card {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 22px 22px;
-  min-height: 132px;
+/* ── Dashboard rows ─────────────────────────────────────────── */
+.microbit-page .mb-rows {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  cursor: pointer;
-  text-decoration: none;
-  color: inherit;
-  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
-  position: relative;
-  overflow: hidden;
+  gap: 16px;
+  margin-bottom: 24px;
 }
-.microbit-page .mb-card:hover {
-  border-color: var(--ink);
-  transform: translateY(-3px);
-  box-shadow: 0 6px 18px rgba(22,22,19,0.08);
+
+.microbit-page .mb-row {
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  border-radius: 24px;
+  padding: 20px 28px;
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) 1fr;
+  align-items: center;
+  gap: 24px;
+  transition: box-shadow 0.22s;
 }
-.microbit-page .mb-card.dash:hover { background: var(--ink); color: var(--paper); }
-.microbit-page .mb-card.dash:hover .mb-sub { color: rgba(250,248,243,0.6); }
-.microbit-page .mb-card.dash.on {
-  background: var(--ink);
-  color: var(--paper);
-  border-color: var(--ink);
+.microbit-page .mb-row:hover {
+  box-shadow: 0 6px 20px rgba(22,22,19,0.06);
 }
-.microbit-page .mb-card.dash.on .mb-sub { color: rgba(250,248,243,0.6); }
-.microbit-page .mb-card .mb-ico {
-  width: 28px;
-  height: 28px;
-  color: currentColor;
-  margin-bottom: 14px;
+
+.microbit-page .mb-row.placeholder {
+  border-style: dashed;
+  border-color: var(--line);
+  background: transparent;
 }
-.microbit-page .mb-card .mb-title {
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
+.microbit-page .mb-row.placeholder:hover { box-shadow: none; }
+
+.microbit-page .mb-row-label {
+  font-family: var(--font-kr);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  padding-left: 8px;
+  line-height: 1.25;
 }
-.microbit-page .mb-card .mb-sub {
+.microbit-page .mb-row-label .mb-row-sub {
+  display: block;
   font-family: var(--font-mono);
   font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   color: var(--ink-mute);
-  margin-top: 6px;
-  letter-spacing: 0.02em;
+  margin-top: 4px;
 }
-.microbit-page .mb-card .mb-arrow {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  font-size: 16px;
+.microbit-page .mb-row.placeholder .mb-row-label {
   color: var(--ink-mute);
-  transition: transform 0.22s, color 0.22s;
+  font-weight: 600;
 }
-.microbit-page .mb-card:hover .mb-arrow { color: currentColor; transform: translateX(4px); }
 
-/* Placeholder card (future dashboards) */
-.microbit-page .mb-card.placeholder {
-  background: transparent;
-  border-style: dashed;
-  cursor: default;
-  color: var(--ink-mute);
+/* Action buttons inside a row */
+.microbit-page .mb-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.microbit-page .mb-btn {
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+  padding: 16px 14px;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-}
-.microbit-page .mb-card.placeholder:hover {
-  transform: none;
-  border-color: var(--line);
-  box-shadow: none;
-}
-.microbit-page .mb-card.placeholder .mb-ph-label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: var(--ink-mute);
-  text-transform: uppercase;
-}
-.microbit-page .mb-card.placeholder .mb-ph-sub {
-  font-size: 12px;
-  color: var(--ink-mute);
-  margin-top: 6px;
+  text-decoration: none;
+  color: var(--ink);
   font-family: var(--font-kr);
-  letter-spacing: 0;
-  text-transform: none;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  line-height: 1.3;
+  word-break: keep-all;
 }
+.microbit-page .mb-btn:hover {
+  background: var(--ink);
+  color: var(--paper);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(22,22,19,0.18);
+}
+.microbit-page .mb-btn .mb-btn-ico {
+  width: 18px;
+  height: 18px;
+  margin-bottom: 6px;
+  color: currentColor;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.microbit-page .mb-btn:hover .mb-btn-ico { opacity: 1; }
 
-/* Disabled action card (when no dashboard selected) */
-.microbit-page .mb-card.disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.microbit-page .mb-row.placeholder .mb-btn {
+  border-style: dashed;
+  border-color: var(--line);
+  color: var(--ink-mute);
+  cursor: default;
   pointer-events: none;
+  opacity: 0.55;
 }
 
-/* How-to inline panel */
+/* ── How-to inline panel ─────────────────────────────────────── */
 .microbit-page .mb-howto {
   background: var(--paper);
   border: 1px solid var(--line);
@@ -180,8 +184,7 @@
   margin: 0;
 }
 .microbit-page .mb-close {
-  width: 30px;
-  height: 30px;
+  width: 30px; height: 30px;
   border: 1px solid var(--line);
   background: var(--paper);
   border-radius: 50%;
@@ -192,9 +195,7 @@
   transition: all 0.18s;
 }
 .microbit-page .mb-close:hover {
-  background: var(--ink);
-  color: var(--paper);
-  border-color: var(--ink);
+  background: var(--ink); color: var(--paper); border-color: var(--ink);
 }
 .microbit-page .mb-close svg { width: 12px; height: 12px; }
 
@@ -224,10 +225,8 @@
 .microbit-page .mb-howto-body ol li::before {
   content: counter(step);
   position: absolute;
-  left: 0;
-  top: 1px;
-  width: 24px;
-  height: 24px;
+  left: 0; top: 1px;
+  width: 24px; height: 24px;
   background: var(--ink);
   color: var(--paper);
   border-radius: 50%;
@@ -283,17 +282,25 @@
   font-size: 13px;
 }
 
-/* Iframe panel (reuses .frame-wrap from index.html base styles) */
 .microbit-page .mb-frame-panel {
   animation: slideUp 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+/* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 960px) {
-  .microbit-page .mb-grid { grid-template-columns: repeat(2, 1fr); }
+  .microbit-page .mb-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 18px 20px;
+    border-radius: 18px;
+  }
+  .microbit-page .mb-row-label { padding-left: 0; font-size: 19px; }
+  .microbit-page .mb-actions { grid-template-columns: repeat(2, 1fr); }
   .microbit-page .mb-howto-body .device-row { grid-template-columns: 1fr; }
 }
-@media (max-width: 560px) {
-  .microbit-page .mb-grid { grid-template-columns: 1fr; }
+@media (max-width: 480px) {
+  .microbit-page .mb-actions { grid-template-columns: 1fr 1fr; }
+  .microbit-page .mb-btn { font-size: 13.5px; min-height: 64px; padding: 12px 10px; }
 }
 </style>
 
@@ -303,103 +310,110 @@
   const DASHBOARDS = [
     {
       key: 'light',
-      title: '빛의 세기 대시보드',
+      title: '빛의 세기',
       sub: 'LIGHT · LUX',
       file: '05_마이크로비트_단순표시.html',
       hex: 'microbit01_light.hex',
-      ico: '<circle cx="12" cy="12" r="4"/><path d="M12 3 V6 M12 18 V21 M3 12 H6 M18 12 H21 M5.6 5.6 L7.7 7.7 M16.3 16.3 L18.4 18.4 M5.6 18.4 L7.7 16.3 M16.3 7.7 L18.4 5.6"/>',
       howtoCode: 'bluetooth.startUartService()\nbasic.forever(function () {\n    bluetooth.uartWriteLine("" + (input.lightLevel()))\n    basic.pause(1000)\n})'
     }
     // 향후 추가될 대시보드:
-    // { key:'temp', title:'온도 대시보드', sub:'TEMPERATURE · °C', file:'…', hex:'…', ico:'…', howtoCode:'…' },
-    // { key:'sound', title:'소리 대시보드', sub:'SOUND · dB', file:'…', hex:'…', ico:'…', howtoCode:'…' },
+    // { key:'temp', title:'온도', sub:'TEMPERATURE · °C', file:'…', hex:'…', howtoCode:'…' },
   ];
-  const PLACEHOLDER_TARGET = 4; // 첫 컬럼에 노출할 총 슬롯 수 (현재 + 향후)
+  const PLACEHOLDER_TARGET = 4; // 화면에 노출할 총 행 수 (현재 + 향후)
 
-  const grid = document.getElementById('mbGrid');
-  let activeDash = DASHBOARDS[0] || null;
+  const rowsEl = document.getElementById('mbRows');
 
-  // ─── Render grid ───────────────────────────────────────────────
+  // SVG icons for the 4 actions
+  const ICO = {
+    dash:  '<rect x="3" y="3" width="8" height="9" rx="1.2"/><rect x="13" y="3" width="8" height="5" rx="1.2"/><rect x="13" y="10" width="8" height="11" rx="1.2"/><rect x="3" y="14" width="8" height="7" rx="1.2"/>',
+    open:  '<path d="M5 4 H4 V20 H20 V13 M9 4 H20 V14 M20 4 L11 13"/>',
+    howto: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9 a2.5 2.5 0 1 1 3.5 2.3 c-0.7 0.4 -1 1 -1 1.7 V14 M12 17 v0.1"/>',
+    hex:   '<path d="M12 4 V14 M8 11 L12 15 L16 11 M5 18 H19 M5 21 H19"/>'
+  };
+
+  // ─── Render rows ────────────────────────────────────────────
   function render() {
-    grid.innerHTML = '';
+    rowsEl.innerHTML = '';
 
-    // Row 1: active dashboard + 3 action cards
-    if (activeDash) {
-      grid.appendChild(makeDashCard(activeDash, true));
-      grid.appendChild(makeActionCard({
-        kind: 'open-new',
-        title: '새 창에서 열기',
-        sub: 'OPEN IN NEW TAB',
-        ico: '<path d="M5 4 H4 V20 H20 V13 M9 4 H20 V14 M20 4 L11 13"/>',
-        href: activeDash.file,
-        target: '_blank'
-      }));
-      grid.appendChild(makeActionCard({
-        kind: 'hex',
-        title: 'Hex 파일 다운로드',
-        sub: 'MICRO:BIT FIRMWARE',
-        ico: '<path d="M12 4 V14 M8 11 L12 15 L16 11 M5 18 H19 M5 21 H19"/>',
-        href: activeDash.hex,
-        download: activeDash.hex
-      }));
-      grid.appendChild(makeActionCard({
-        kind: 'howto',
-        title: '이용방법',
-        sub: 'HOW TO USE',
-        ico: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9 a2.5 2.5 0 1 1 3.5 2.3 c-0.7 0.4 -1 1 -1 1.7 V14 M12 17 v0.1"/>',
-        onclick: showHowto
-      }));
-    }
+    DASHBOARDS.forEach(d => rowsEl.appendChild(makeRow(d)));
 
-    // Remaining rows: placeholder cards in column 1 only (future dashboards)
+    // Placeholder rows for future dashboards
     const remaining = Math.max(0, PLACEHOLDER_TARGET - DASHBOARDS.length);
     for (let i = 0; i < remaining; i++) {
-      const ph = document.createElement('div');
-      ph.className = 'mb-card placeholder';
-      ph.style.gridColumn = '1';
-      ph.innerHTML = `
-        <div class="mb-ph-label">Coming Soon</div>
-        <div class="mb-ph-sub">새 대시보드 준비 중</div>
-      `;
-      grid.appendChild(ph);
+      rowsEl.appendChild(makePlaceholderRow());
     }
   }
 
-  function makeDashCard(d, isActive) {
-    const a = document.createElement('a');
-    a.className = 'mb-card dash' + (isActive ? ' on' : '');
-    a.href = '#';
-    a.innerHTML = `
-      <span class="mb-arrow">→</span>
-      <svg class="mb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d.ico}</svg>
-      <div>
-        <div class="mb-title">${d.title}</div>
-        <div class="mb-sub">${d.sub}</div>
+  function makeRow(d) {
+    const row = document.createElement('div');
+    row.className = 'mb-row';
+
+    row.innerHTML = `
+      <div class="mb-row-label">
+        ${d.title}
+        <span class="mb-row-sub">${d.sub}</span>
       </div>
+      <div class="mb-actions"></div>
     `;
-    a.addEventListener('click', (e) => {
-      e.preventDefault();
-      activeDash = d;
-      openFrame(d);
-      render();
-    });
-    return a;
+    const actions = row.querySelector('.mb-actions');
+
+    // 1) 대시보드 — opens iframe inline
+    actions.appendChild(makeBtn({
+      label: '대시보드',
+      ico:   ICO.dash,
+      onclick: () => openFrame(d)
+    }));
+    // 2) 새창에서열기
+    actions.appendChild(makeBtn({
+      label: '새창에서 열기',
+      ico:   ICO.open,
+      href:  d.file,
+      target:'_blank'
+    }));
+    // 3) 이용방법
+    actions.appendChild(makeBtn({
+      label: '이용방법',
+      ico:   ICO.howto,
+      onclick: () => showHowto(d)
+    }));
+    // 4) HEX파일 다운로드
+    actions.appendChild(makeBtn({
+      label: 'HEX파일 다운로드',
+      ico:   ICO.hex,
+      href:  d.hex,
+      download: d.hex
+    }));
+
+    return row;
   }
 
-  function makeActionCard(opts) {
-    const a = document.createElement('a');
-    a.className = 'mb-card action';
-    a.innerHTML = `
-      <span class="mb-arrow">→</span>
-      <svg class="mb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${opts.ico}</svg>
-      <div>
-        <div class="mb-title">${opts.title}</div>
-        <div class="mb-sub">${opts.sub}</div>
+  function makePlaceholderRow() {
+    const row = document.createElement('div');
+    row.className = 'mb-row placeholder';
+    row.innerHTML = `
+      <div class="mb-row-label">
+        Coming Soon
+        <span class="mb-row-sub">대시보드 준비 중</span>
+      </div>
+      <div class="mb-actions">
+        <div class="mb-btn">대시보드</div>
+        <div class="mb-btn">새창에서 열기</div>
+        <div class="mb-btn">이용방법</div>
+        <div class="mb-btn">HEX파일 다운로드</div>
       </div>
     `;
+    return row;
+  }
+
+  function makeBtn(opts) {
+    const a = document.createElement('a');
+    a.className = 'mb-btn';
+    a.innerHTML = `
+      <svg class="mb-btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${opts.ico}</svg>
+      <span>${opts.label}</span>
+    `;
     if (opts.href) a.href = opts.href;
-    if (opts.target) a.target = opts.target;
-    if (opts.target === '_blank') a.rel = 'noopener';
+    if (opts.target) { a.target = opts.target; a.rel = 'noopener'; }
     if (opts.download) a.setAttribute('download', opts.download);
     if (opts.onclick) {
       a.href = '#';
@@ -408,50 +422,45 @@
     return a;
   }
 
-  // ─── Inline iframe panel ───────────────────────────────────────
-  const framePanel = document.getElementById('mbFramePanel');
-  const frame = document.getElementById('mbFrame');
-  const frameLoading = document.getElementById('mbFrameLoading');
+  // ─── Inline iframe panel ────────────────────────────────────
+  const framePanel  = document.getElementById('mbFramePanel');
+  const frame       = document.getElementById('mbFrame');
+  const frameLoad   = document.getElementById('mbFrameLoading');
   const frameSource = document.getElementById('mbFrameSource');
 
   frame.addEventListener('load', () => {
     if (frame.src && !frame.src.endsWith('about:blank')) {
-      frameLoading.classList.add('hide');
+      frameLoad.classList.add('hide');
     }
   });
 
   function openFrame(d) {
     framePanel.style.display = 'block';
     frameSource.textContent = d.file;
-    frameLoading.classList.remove('hide');
+    frameLoad.classList.remove('hide');
     frame.src = d.file;
-    setTimeout(() => frameLoading.classList.add('hide'), 4000);
-    // Smooth scroll to the frame
+    setTimeout(() => frameLoad.classList.add('hide'), 4000);
     setTimeout(() => framePanel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   }
 
-  // ─── How-to inline panel ───────────────────────────────────────
-  const howto = document.getElementById('mbHowto');
+  // ─── How-to inline panel ────────────────────────────────────
+  const howto      = document.getElementById('mbHowto');
   const howtoTitle = document.getElementById('mbHowtoTitle');
-  const howtoBody = document.getElementById('mbHowtoBody');
+  const howtoBody  = document.getElementById('mbHowtoBody');
 
-  function showHowto() {
-    if (!activeDash) return;
-    howtoTitle.textContent = activeDash.title + ' 이용 방법';
-    howtoBody.innerHTML = buildHowtoHtml(activeDash);
+  function showHowto(d) {
+    howtoTitle.textContent = d.title + ' 대시보드 이용 방법';
+    howtoBody.innerHTML = buildHowtoHtml(d);
     howto.style.display = 'block';
     setTimeout(() => howto.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
   }
-  // Expose close handler
-  window.closeMbHowto = function() {
-    howto.style.display = 'none';
-  };
+  window.closeMbHowto = function() { howto.style.display = 'none'; };
 
   function buildHowtoHtml(d) {
     return `
       <h4>1. Hex 파일 다운로드 & 마이크로비트에 넣기</h4>
       <ol>
-        <li>이 페이지의 <b>Hex 파일 다운로드</b> 카드를 클릭해 <code>${d.hex}</code> 파일을 받습니다.</li>
+        <li>이 페이지의 <b>HEX파일 다운로드</b> 버튼을 클릭해 <code>${d.hex}</code> 파일을 받습니다.</li>
         <li>USB 케이블로 마이크로비트를 PC에 연결합니다. 컴퓨터에 <b>MICROBIT</b> 드라이브가 나타납니다.</li>
         <li>다운로드한 <code>${d.hex}</code> 파일을 <b>MICROBIT</b> 드라이브에 끌어다 놓습니다.</li>
         <li>마이크로비트의 노란 LED 깜빡임이 멈추면 자동으로 리셋되며 프로그램이 시작됩니다.</li>
@@ -459,7 +468,7 @@
 
       <h4>2. 대시보드와 연결하기</h4>
       <ol>
-        <li><b>빛의 세기 대시보드</b> 카드를 클릭하거나 <b>새 창에서 열기</b>로 대시보드를 엽니다.</li>
+        <li><b>대시보드</b> 버튼을 클릭하거나 <b>새창에서 열기</b>로 페이지를 엽니다.</li>
         <li>오른쪽 위 <b>🔗 장치 연결</b> 버튼을 누릅니다.</li>
         <li>연결 방식 선택 화면에서 <b>무선 연결</b>(또는 USB는 <b>유선 연결</b>)을 선택합니다.</li>
         <li>브라우저 팝업에서 본인의 마이크로비트(<code>BBC micro:bit [xxxxx]</code>)를 선택합니다.</li>
@@ -496,10 +505,9 @@
     return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
 
-  // ─── Init ──────────────────────────────────────────────────────
+  // ─── Init ───────────────────────────────────────────────────
   render();
 
-  // Cleanup when navigating away
   window.__pageCleanup = function() {
     try { frame.src = 'about:blank'; } catch (e) {}
   };
