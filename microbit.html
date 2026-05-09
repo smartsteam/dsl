@@ -1,8 +1,8 @@
-<section class="dashview">
+<section class="dashview microbit-page">
   <div class="container">
     <!-- Page header -->
     <div class="view-head">
-      <div class="mark alt" id="mbMark">
+      <div class="mark alt">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="6" width="20" height="12" rx="3"/>
           <circle cx="8" cy="12" r="1.4" fill="currentColor"/>
@@ -11,65 +11,497 @@
         </svg>
       </div>
       <div>
-        <h1 id="mbTitle">마이크로비트 연동 대시보드</h1>
-        <div class="sub" id="mbSub">MICRO:BIT DASHBOARD · Web Bluetooth 실시간 연동</div>
-      </div>
-      <div class="ext-group">
-        <a href="05_마이크로비트_단순표시.html" id="mbExtLink" target="_blank" rel="noopener" class="ext" title="새 탭에서 열기">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 3 H3 V11 H11 V9 M7 3 H11 V7 M11 3 L6 8"/>
-          </svg>
-          새 탭으로 열기
-        </a>
-        <div class="ipad-notice">
-          <svg class="ipad-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="1.5" width="10" height="13" rx="1.5"/>
-            <path d="M7 12 H9"/>
-          </svg>
-          <span>아이패드는 <b>Bluefy</b> 앱을 통해 접속 후 <b>새 탭으로 열기</b>를 통해 대시보드를 실행해 주세요</span>
-        </div>
+        <h1>마이크로비트 연동 대시보드</h1>
+        <div class="sub">MICRO:BIT DASHBOARD · Web Bluetooth 실시간 연동</div>
       </div>
     </div>
 
-    <!-- Iframe -->
-    <div class="frame-wrap">
-      <div class="frame-loading" id="mbLoading">
-        <div>
-          <div class="spin"></div>
-          Loading micro:bit dashboard…
-        </div>
+    <!-- Dashboard grid -->
+    <div class="mb-grid" id="mbGrid"></div>
+
+    <!-- Inline usage panel (shown when 이용방법 clicked) -->
+    <div class="mb-howto" id="mbHowto" style="display:none;">
+      <div class="mb-howto-head">
+        <h3 id="mbHowtoTitle">이용 방법</h3>
+        <button class="mb-close" type="button" onclick="closeMbHowto()" aria-label="닫기">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M3 3 L11 11 M11 3 L3 11"/>
+          </svg>
+        </button>
       </div>
-      <iframe id="mbFrame" title="Micro:bit Dashboard" src="about:blank" allow="bluetooth; serial"></iframe>
+      <div class="mb-howto-body" id="mbHowtoBody"></div>
     </div>
 
-    <div class="frame-meta">
-      <div>SOURCE · <code id="mbSource">05_마이크로비트_단순표시.html</code></div>
-      <div>EMBEDDED · RENDERED INLINE</div>
+    <!-- Inline iframe panel (shown when dashboard card clicked) -->
+    <div class="mb-frame-panel" id="mbFramePanel" style="display:none;">
+      <div class="frame-wrap">
+        <div class="frame-loading" id="mbFrameLoading">
+          <div>
+            <div class="spin"></div>
+            Loading dashboard…
+          </div>
+        </div>
+        <iframe id="mbFrame" title="Micro:bit Dashboard" src="about:blank" allow="bluetooth; serial"></iframe>
+      </div>
+      <div class="frame-meta">
+        <div>SOURCE · <code id="mbFrameSource">—</code></div>
+        <div>EMBEDDED · RENDERED INLINE</div>
+      </div>
     </div>
   </div>
 </section>
 
+<style>
+.microbit-page .mb-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.microbit-page .mb-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px 22px;
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.microbit-page .mb-card:hover {
+  border-color: var(--ink);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(22,22,19,0.08);
+}
+.microbit-page .mb-card.dash:hover { background: var(--ink); color: var(--paper); }
+.microbit-page .mb-card.dash:hover .mb-sub { color: rgba(250,248,243,0.6); }
+.microbit-page .mb-card.dash.on {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.microbit-page .mb-card.dash.on .mb-sub { color: rgba(250,248,243,0.6); }
+.microbit-page .mb-card .mb-ico {
+  width: 28px;
+  height: 28px;
+  color: currentColor;
+  margin-bottom: 14px;
+}
+.microbit-page .mb-card .mb-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.microbit-page .mb-card .mb-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  margin-top: 6px;
+  letter-spacing: 0.02em;
+}
+.microbit-page .mb-card .mb-arrow {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  font-size: 16px;
+  color: var(--ink-mute);
+  transition: transform 0.22s, color 0.22s;
+}
+.microbit-page .mb-card:hover .mb-arrow { color: currentColor; transform: translateX(4px); }
+
+/* Placeholder card (future dashboards) */
+.microbit-page .mb-card.placeholder {
+  background: transparent;
+  border-style: dashed;
+  cursor: default;
+  color: var(--ink-mute);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.microbit-page .mb-card.placeholder:hover {
+  transform: none;
+  border-color: var(--line);
+  box-shadow: none;
+}
+.microbit-page .mb-card.placeholder .mb-ph-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-mute);
+  text-transform: uppercase;
+}
+.microbit-page .mb-card.placeholder .mb-ph-sub {
+  font-size: 12px;
+  color: var(--ink-mute);
+  margin-top: 6px;
+  font-family: var(--font-kr);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Disabled action card (when no dashboard selected) */
+.microbit-page .mb-card.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* How-to inline panel */
+.microbit-page .mb-howto {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px 26px;
+  margin-bottom: 24px;
+  animation: slideUp 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.microbit-page .mb-howto-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.microbit-page .mb-howto-head h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.microbit-page .mb-close {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+  transition: all 0.18s;
+}
+.microbit-page .mb-close:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.microbit-page .mb-close svg { width: 12px; height: 12px; }
+
+.microbit-page .mb-howto-body { font-size: 14px; color: var(--ink-soft); line-height: 1.7; }
+.microbit-page .mb-howto-body h4 {
+  font-family: var(--font-kr);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 22px 0 10px;
+  letter-spacing: -0.01em;
+}
+.microbit-page .mb-howto-body h4:first-child { margin-top: 0; }
+.microbit-page .mb-howto-body ol {
+  margin: 8px 0 14px;
+  padding-left: 0;
+  list-style: none;
+  counter-reset: step;
+}
+.microbit-page .mb-howto-body ol li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 36px;
+  margin-bottom: 10px;
+  line-height: 1.65;
+}
+.microbit-page .mb-howto-body ol li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 24px;
+  height: 24px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 50%;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.microbit-page .mb-howto-body b { color: var(--ink); font-weight: 700; }
+.microbit-page .mb-howto-body code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: var(--bg);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: var(--ink);
+  border: 1px solid var(--line-soft);
+}
+.microbit-page .mb-howto-body pre {
+  background: #1e2d6b;
+  color: #e8effe;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  overflow-x: auto;
+  margin: 10px 0 16px;
+}
+.microbit-page .mb-howto-body .device-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin: 8px 0 6px;
+}
+.microbit-page .mb-howto-body .device-row > div {
+  background: var(--bg);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+}
+.microbit-page .mb-howto-body .device-row b { display: block; margin-bottom: 4px; }
+.microbit-page .mb-howto-body a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.microbit-page .mb-howto-body a:hover { text-decoration: underline; }
+.microbit-page .mb-howto-body .tip-line {
+  background: var(--bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-size: 13px;
+}
+
+/* Iframe panel (reuses .frame-wrap from index.html base styles) */
+.microbit-page .mb-frame-panel {
+  animation: slideUp 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (max-width: 960px) {
+  .microbit-page .mb-grid { grid-template-columns: repeat(2, 1fr); }
+  .microbit-page .mb-howto-body .device-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .microbit-page .mb-grid { grid-template-columns: 1fr; }
+}
+</style>
+
 <script>
 (function() {
-  const FILE = '05_마이크로비트_단순표시.html';
+  // Dashboard registry — append more entries here as new dashboards are built
+  const DASHBOARDS = [
+    {
+      key: 'light',
+      title: '빛의 세기 대시보드',
+      sub: 'LIGHT · LUX',
+      file: '05_마이크로비트_단순표시.html',
+      hex: 'microbit01_light.hex',
+      ico: '<circle cx="12" cy="12" r="4"/><path d="M12 3 V6 M12 18 V21 M3 12 H6 M18 12 H21 M5.6 5.6 L7.7 7.7 M16.3 16.3 L18.4 18.4 M5.6 18.4 L7.7 16.3 M16.3 7.7 L18.4 5.6"/>',
+      howtoCode: 'bluetooth.startUartService()\nbasic.forever(function () {\n    bluetooth.uartWriteLine("" + (input.lightLevel()))\n    basic.pause(1000)\n})'
+    }
+    // 향후 추가될 대시보드:
+    // { key:'temp', title:'온도 대시보드', sub:'TEMPERATURE · °C', file:'…', hex:'…', ico:'…', howtoCode:'…' },
+    // { key:'sound', title:'소리 대시보드', sub:'SOUND · dB', file:'…', hex:'…', ico:'…', howtoCode:'…' },
+  ];
+  const PLACEHOLDER_TARGET = 4; // 첫 컬럼에 노출할 총 슬롯 수 (현재 + 향후)
 
-  const iframe = document.getElementById('mbFrame');
-  const loading = document.getElementById('mbLoading');
+  const grid = document.getElementById('mbGrid');
+  let activeDash = DASHBOARDS[0] || null;
 
-  iframe.addEventListener('load', () => {
-    if (iframe.src && !iframe.src.endsWith('about:blank')) {
-      loading.classList.add('hide');
+  // ─── Render grid ───────────────────────────────────────────────
+  function render() {
+    grid.innerHTML = '';
+
+    // Row 1: active dashboard + 3 action cards
+    if (activeDash) {
+      grid.appendChild(makeDashCard(activeDash, true));
+      grid.appendChild(makeActionCard({
+        kind: 'open-new',
+        title: '새 창에서 열기',
+        sub: 'OPEN IN NEW TAB',
+        ico: '<path d="M5 4 H4 V20 H20 V13 M9 4 H20 V14 M20 4 L11 13"/>',
+        href: activeDash.file,
+        target: '_blank'
+      }));
+      grid.appendChild(makeActionCard({
+        kind: 'hex',
+        title: 'Hex 파일 다운로드',
+        sub: 'MICRO:BIT FIRMWARE',
+        ico: '<path d="M12 4 V14 M8 11 L12 15 L16 11 M5 18 H19 M5 21 H19"/>',
+        href: activeDash.hex,
+        download: activeDash.hex
+      }));
+      grid.appendChild(makeActionCard({
+        kind: 'howto',
+        title: '이용방법',
+        sub: 'HOW TO USE',
+        ico: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9 a2.5 2.5 0 1 1 3.5 2.3 c-0.7 0.4 -1 1 -1 1.7 V14 M12 17 v0.1"/>',
+        onclick: showHowto
+      }));
+    }
+
+    // Remaining rows: placeholder cards in column 1 only (future dashboards)
+    const remaining = Math.max(0, PLACEHOLDER_TARGET - DASHBOARDS.length);
+    for (let i = 0; i < remaining; i++) {
+      const ph = document.createElement('div');
+      ph.className = 'mb-card placeholder';
+      ph.style.gridColumn = '1';
+      ph.innerHTML = `
+        <div class="mb-ph-label">Coming Soon</div>
+        <div class="mb-ph-sub">새 대시보드 준비 중</div>
+      `;
+      grid.appendChild(ph);
+    }
+  }
+
+  function makeDashCard(d, isActive) {
+    const a = document.createElement('a');
+    a.className = 'mb-card dash' + (isActive ? ' on' : '');
+    a.href = '#';
+    a.innerHTML = `
+      <span class="mb-arrow">→</span>
+      <svg class="mb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d.ico}</svg>
+      <div>
+        <div class="mb-title">${d.title}</div>
+        <div class="mb-sub">${d.sub}</div>
+      </div>
+    `;
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      activeDash = d;
+      openFrame(d);
+      render();
+    });
+    return a;
+  }
+
+  function makeActionCard(opts) {
+    const a = document.createElement('a');
+    a.className = 'mb-card action';
+    a.innerHTML = `
+      <span class="mb-arrow">→</span>
+      <svg class="mb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${opts.ico}</svg>
+      <div>
+        <div class="mb-title">${opts.title}</div>
+        <div class="mb-sub">${opts.sub}</div>
+      </div>
+    `;
+    if (opts.href) a.href = opts.href;
+    if (opts.target) a.target = opts.target;
+    if (opts.target === '_blank') a.rel = 'noopener';
+    if (opts.download) a.setAttribute('download', opts.download);
+    if (opts.onclick) {
+      a.href = '#';
+      a.addEventListener('click', (e) => { e.preventDefault(); opts.onclick(); });
+    }
+    return a;
+  }
+
+  // ─── Inline iframe panel ───────────────────────────────────────
+  const framePanel = document.getElementById('mbFramePanel');
+  const frame = document.getElementById('mbFrame');
+  const frameLoading = document.getElementById('mbFrameLoading');
+  const frameSource = document.getElementById('mbFrameSource');
+
+  frame.addEventListener('load', () => {
+    if (frame.src && !frame.src.endsWith('about:blank')) {
+      frameLoading.classList.add('hide');
     }
   });
 
-  // Safety net — hide loader after 4s regardless
-  setTimeout(() => loading.classList.add('hide'), 4000);
+  function openFrame(d) {
+    framePanel.style.display = 'block';
+    frameSource.textContent = d.file;
+    frameLoading.classList.remove('hide');
+    frame.src = d.file;
+    setTimeout(() => frameLoading.classList.add('hide'), 4000);
+    // Smooth scroll to the frame
+    setTimeout(() => framePanel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  }
 
-  iframe.src = FILE;
+  // ─── How-to inline panel ───────────────────────────────────────
+  const howto = document.getElementById('mbHowto');
+  const howtoTitle = document.getElementById('mbHowtoTitle');
+  const howtoBody = document.getElementById('mbHowtoBody');
 
-  // Cleanup on navigation away
+  function showHowto() {
+    if (!activeDash) return;
+    howtoTitle.textContent = activeDash.title + ' 이용 방법';
+    howtoBody.innerHTML = buildHowtoHtml(activeDash);
+    howto.style.display = 'block';
+    setTimeout(() => howto.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
+  }
+  // Expose close handler
+  window.closeMbHowto = function() {
+    howto.style.display = 'none';
+  };
+
+  function buildHowtoHtml(d) {
+    return `
+      <h4>1. Hex 파일 다운로드 & 마이크로비트에 넣기</h4>
+      <ol>
+        <li>이 페이지의 <b>Hex 파일 다운로드</b> 카드를 클릭해 <code>${d.hex}</code> 파일을 받습니다.</li>
+        <li>USB 케이블로 마이크로비트를 PC에 연결합니다. 컴퓨터에 <b>MICROBIT</b> 드라이브가 나타납니다.</li>
+        <li>다운로드한 <code>${d.hex}</code> 파일을 <b>MICROBIT</b> 드라이브에 끌어다 놓습니다.</li>
+        <li>마이크로비트의 노란 LED 깜빡임이 멈추면 자동으로 리셋되며 프로그램이 시작됩니다.</li>
+      </ol>
+
+      <h4>2. 대시보드와 연결하기</h4>
+      <ol>
+        <li><b>빛의 세기 대시보드</b> 카드를 클릭하거나 <b>새 창에서 열기</b>로 대시보드를 엽니다.</li>
+        <li>오른쪽 위 <b>🔗 장치 연결</b> 버튼을 누릅니다.</li>
+        <li>연결 방식 선택 화면에서 <b>무선 연결</b>(또는 USB는 <b>유선 연결</b>)을 선택합니다.</li>
+        <li>브라우저 팝업에서 본인의 마이크로비트(<code>BBC micro:bit [xxxxx]</code>)를 선택합니다.</li>
+        <li>연결되면 <b>▶ 수신 시작</b> 버튼을 눌러 실시간 측정값을 확인합니다.</li>
+      </ol>
+
+      <h4>3. 기기별 접속 방법</h4>
+      <div class="device-row">
+        <div><b>📱 iPhone · iPad</b>블루투스 연결 시 <b>Bluefy 앱</b> 설치 후 이용하세요.</div>
+        <div><b>🤖 Android</b><b>크롬 브라우저</b>로 접속해 주세요.</div>
+        <div><b>💻 PC · 노트북</b>크롬 브라우저 + USB 또는 블루투스</div>
+      </div>
+
+      <h4>4. 직접 hex를 만들고 싶다면 (참고)</h4>
+      <p>제공된 hex 파일 대신 <a href="https://makecode.microbit.org" target="_blank" rel="noopener">makecode.microbit.org</a>에서 직접 작성할 수도 있습니다.</p>
+      <ol>
+        <li>새 프로젝트 → ⚙️ → <b>확장</b> → <b>bluetooth</b> 추가</li>
+        <li>⚙️ → <b>프로젝트 설정</b> → <b>No Pairing Required</b> 선택<span style="color:var(--ink-mute);font-size:12px;"> (가장 자주 빠뜨리는 단계)</span></li>
+        <li><b>{} JavaScript</b> 모드로 전환 후 코드를 모두 지우고 아래 코드를 붙여넣습니다:</li>
+      </ol>
+      <pre>${escapeHtml(d.howtoCode)}</pre>
+      <ol start="4">
+        <li><b>다운로드</b> 버튼을 눌러 .hex 파일을 받고 <b>MICROBIT</b> 드라이브에 넣습니다.</li>
+        <li>마이크로비트 뒷면 <b>리셋</b> 버튼을 눌러 새 프로그램으로 부팅합니다.</li>
+      </ol>
+
+      <div class="tip-line">
+        💡 연결이 안 될 때는 다른 페이지에서 사용 중인 BLE 연결을 모두 해제하고, 마이크로비트의 전원을 다시 넣어 주세요.
+      </div>
+    `;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  // ─── Init ──────────────────────────────────────────────────────
+  render();
+
+  // Cleanup when navigating away
   window.__pageCleanup = function() {
-    try { iframe.src = 'about:blank'; } catch (e) {}
+    try { frame.src = 'about:blank'; } catch (e) {}
   };
 })();
 </script>
