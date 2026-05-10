@@ -520,6 +520,84 @@ td.tv{font-size:15px;font-weight:900}
   display:inline-block;width:9px;height:9px;border-radius:50%;
   margin-right:5px;vertical-align:middle;
 }
+/* 저장된 분석 마커 (그래프 상단 표시) */
+.analysis-markers{
+  position:absolute;left:0;top:0;right:0;bottom:0;
+  pointer-events:none;z-index:6;overflow:visible;
+}
+.analysis-marker{
+  position:absolute;height:24px;
+  pointer-events:none;
+}
+/* 차트 데이터 영역 안 음영 강조 (분석 구간 위쪽 살짝 표시) */
+.analysis-marker .am-bar{
+  position:absolute;left:0;right:0;top:100%;
+  margin-top:2px;
+  height:4px;border-radius:2px;
+}
+.analysis-marker.range-marker .am-bar{
+  background:var(--acc);opacity:0.55;
+}
+.analysis-marker.tangent-marker .am-bar{
+  background:transparent;height:0;
+  border-top:2.5px dashed var(--pur);opacity:0.85;
+}
+/* 양 끝 세로 핀 (구간 경계) */
+.analysis-marker .am-bar::before,
+.analysis-marker .am-bar::after{
+  content:'';position:absolute;width:2.5px;height:11px;
+  top:50%;transform:translateY(-50%);
+  background:currentColor;opacity:0.9;border-radius:1.5px;
+}
+.analysis-marker .am-bar::before{left:0}
+.analysis-marker .am-bar::after{right:0}
+.analysis-marker.range-marker .am-bar{color:var(--acc)}
+.analysis-marker.tangent-marker .am-bar{color:var(--pur)}
+/* 알약 (분석 번호 + 아이콘) */
+.analysis-marker .am-pill{
+  position:absolute;left:50%;top:0;transform:translateX(-50%);
+  pointer-events:auto;cursor:pointer;
+  display:inline-flex;align-items:center;gap:3px;
+  padding:3px 9px;border-radius:12px;
+  font-size:11px;font-weight:900;color:#fff;
+  box-shadow:0 3px 8px rgba(0,0,0,0.28);
+  transition:transform .12s,box-shadow .15s;
+  white-space:nowrap;line-height:1.2;
+  border:2px solid #fff;
+}
+.analysis-marker.range-marker .am-pill{background:var(--acc)}
+.analysis-marker.tangent-marker .am-pill{background:var(--pur)}
+.analysis-marker .am-pill:hover{
+  transform:translateX(-50%) scale(1.18);
+  box-shadow:0 5px 14px rgba(0,0,0,0.38);
+  z-index:20;
+}
+/* 알약 아래쪽 화살표 — 정확한 X 위치 가리킴 */
+.analysis-marker .am-pill::after{
+  content:'';position:absolute;
+  left:50%;top:100%;transform:translateX(-50%);
+  width:0;height:0;
+  border-left:5px solid transparent;
+  border-right:5px solid transparent;
+  border-top:6px solid currentColor;
+  margin-top:-1px;
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,0.15));
+}
+.analysis-marker.range-marker .am-pill{color:var(--acc)}
+.analysis-marker.tangent-marker .am-pill{color:var(--pur)}
+.analysis-marker .am-pill .am-icon,
+.analysis-marker .am-pill .am-num{color:#fff}
+.analysis-marker .am-pill .am-icon{font-size:11px;line-height:1}
+.analysis-marker .am-pill .am-num{font-size:11px}
+/* 분석 영역이 있다는 시각적 단서 — 빈 마커 영역 배경 (살짝 강조) */
+.analysis-strip{
+  position:absolute;left:0;right:0;top:0;height:42px;
+  background:linear-gradient(180deg,rgba(79,126,248,0.05) 0%,rgba(79,126,248,0) 100%);
+  pointer-events:none;z-index:1;
+  display:none;
+}
+.analysis-strip.has-markers{display:block}
+
 .live-stats-hint{
   position:absolute;left:50%;top:8px;transform:translateX(-50%);
   font-size:11px;color:var(--sub);background:rgba(255,255,255,.85);
@@ -1279,6 +1357,8 @@ basic.forever(function () {
             <canvas id="mc"></canvas>
             <!-- 두 점 분석 기울기 선(SVG) — 채널별 -->
             <svg class="live-tan-svg" id="obs-tan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+            <!-- 저장된 분석 마커 -->
+            <div class="analysis-markers" id="obs-analysis-markers"></div>
             <!-- 드래그 구간 선택 오버레이 -->
             <div class="live-sel-overlay" id="obs-sel-overlay">
               <div class="live-sel-edge left"></div>
@@ -3474,7 +3554,8 @@ function initChart(){
   chart=new Chart(ctx,{type:'line',data:{labels:[],datasets:[]},options:{
     responsive:true,maintainAspectRatio:false,animation:{duration:250},
     interaction:{mode:'index',intersect:false},
-    plugins:{legend:{display:true,position:'top',align:'end',labels:{usePointStyle:true,boxWidth:9,font:{size:11}}}},
+    layout:{padding:{top:42}},  // 분석 마커 영역 확보
+    plugins:{legend:{display:true,position:'bottom',align:'end',labels:{usePointStyle:true,boxWidth:9,font:{size:11},padding:6}}},
     scales:{
       x:{grid:{color:'rgba(79,126,248,.08)'},title:{display:true,text:'측정 번호',font:{size:12,weight:'bold'},color:'#5b6ea8'},ticks:{font:{size:11},color:'#9aabd4'}},
       y:{grid:{color:'rgba(79,126,248,.18)'},title:{display:true,text:`측정값 (${uLbl()})`,font:{size:12,weight:'bold'},color:'#5b6ea8'},ticks:{font:{size:11},color:'#9aabd4'}}
@@ -3502,6 +3583,7 @@ function updChart(){
     if(typeof renderObsSel==='function') renderObsSel();
     if(typeof renderObsTangent==='function') renderObsTangent();
     if(typeof _updateObsScrollUI==='function') _updateObsScrollUI();
+    if(typeof _renderObsAnalysisMarkers==='function') _renderObsAnalysisMarkers();
     return;}
   // 관찰 그래프 줌 + 시간 탐색
   const viewRecs = (typeof _obsViewSlice === 'function') ? _obsViewSlice() : (obsZoom >= recs.length ? recs : recs.slice(-obsZoom));
@@ -3551,6 +3633,7 @@ function updChart(){
   if(typeof renderObsSel === 'function') renderObsSel();
   if(typeof renderObsTangent === 'function') renderObsTangent();
   if(typeof _updateObsScrollUI === 'function') _updateObsScrollUI();
+  if(typeof _renderObsAnalysisMarkers === 'function') _renderObsAnalysisMarkers();
 }
 function updStats(){
   const e=document.getElementById('stat-txt');
@@ -5101,9 +5184,10 @@ function initLiveChart(){
       responsive: true, maintainAspectRatio: false,
       animation: false,
       interaction: { mode: 'index', intersect: false },
+      layout: { padding: { top: 42 } },  // 분석 마커 영역 확보
       plugins: {
-        legend: { display: true, position: 'top', align: 'end',
-          labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } }
+        legend: { display: true, position: 'bottom', align: 'end',
+          labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 }, padding: 6 }
         }
       },
       scales: {
@@ -5127,7 +5211,9 @@ function pushLiveBuf(vals){
   auxData.forEach((items,ti)=>(items||[]).forEach((d,si)=>{
     auxSnap.push({thermoIdx:ti,slotIdx:si,value:isNaN(d.value)?null:Math.round(d.value*100)/100});
   }));
-  liveBuf.push({ t: now(), vals: vals.map(v => Math.round(v*10)/10), aux: auxSnap });
+  // seq: 절대 시퀀스 번호 (분석 마커가 데이터를 추적할 때 사용)
+  if(typeof _liveSeqCounter === 'undefined'){ window._liveSeqCounter = 0; }
+  liveBuf.push({ seq: _liveSeqCounter++, t: now(), vals: vals.map(v => Math.round(v*10)/10), aux: auxSnap });
   if(liveBuf.length > LBUF) liveBuf.shift();
   _liveNeedsUpdate = true;
   updLiveCurVals(vals);
@@ -5173,6 +5259,7 @@ function flushLiveChart(){
   liveChart.update('none');
   // 구간 선택 오버레이/통계 동기화
   if(typeof renderLiveSel === 'function') renderLiveSel();
+  if(typeof _renderLiveAnalysisMarkers === 'function') _renderLiveAnalysisMarkers();
 }
 
 function updLiveCurVals(vals){
@@ -5205,6 +5292,8 @@ let _liveSelDrag = null;     // 드래그 중 임시 상태
 let _liveSelHintShown = false;
 // 시간 탐색: liveStartIdx === null 이면 최신을 따라감(라이브). 정수면 그 인덱스부터 liveWin개를 표시.
 let liveStartIdx = null;
+// 라이브 버퍼 절대 시퀀스 카운터 (분석 마커 추적용)
+let _liveSeqCounter = 0;
 // 탐색 슬라이더로 거슬러 올라갈 수 있는 최대 데이터 개수
 const LIVE_NAV_MAX = 3000;
 
@@ -5300,6 +5389,8 @@ function computeLiveStats(){
     return { label: ch.label, color: ch.color, n, mean, max, min, std };
   });
   return {
+    startSeq: liveBuf[s].seq,
+    endSeq: liveBuf[e].seq,
     startTime: liveBuf[s].t,
     endTime: liveBuf[e].t,
     count: e - s + 1,
@@ -5581,6 +5672,7 @@ if(document.readyState === 'loading'){
 
 function clearLiveBuf(){
   liveBuf = [];
+  _liveSeqCounter = 0;
   clearAux();
   if(liveChart){ liveChart.data.labels=[]; liveChart.data.datasets=[]; liveChart.update('none'); }
   document.getElementById('live-cur-vals').innerHTML = '';
@@ -5670,6 +5762,7 @@ function computeLiveTangent(){
     return { label: ch.label, color: ch.color, valid:true, ya, yb, dy, slope };
   });
   return {
+    seqA: recA.seq, seqB: recB.seq,
     timeA: recA.t, timeB: recB.t,
     dt, idxA: a, idxB: b,
     series
@@ -6171,6 +6264,8 @@ function saveCurrentRangeAnalysis(btn){
     source: 'live',
     savedAt: now(),
     unit: uLbl(),
+    startSeq: stats.startSeq,
+    endSeq: stats.endSeq,
     startTime: stats.startTime,
     endTime: stats.endTime,
     count: stats.count,
@@ -6186,6 +6281,7 @@ function saveCurrentRangeAnalysis(btn){
   }
   toast('✅ 분석 탭에 저장했어요');
   if(document.getElementById('a-tab').classList.contains('on')) renderAnalysisTab();
+  if(typeof _renderLiveAnalysisMarkers === 'function') _renderLiveAnalysisMarkers();
 }
 
 function saveCurrentTangentAnalysis(btn){
@@ -6198,6 +6294,7 @@ function saveCurrentTangentAnalysis(btn){
     source: 'live',
     savedAt: now(),
     unit: uLbl(),
+    seqA: tan.seqA, seqB: tan.seqB,
     timeA: tan.timeA, timeB: tan.timeB,
     dt: tan.dt,
     series: tan.series.map(s => ({
@@ -6212,21 +6309,28 @@ function saveCurrentTangentAnalysis(btn){
   }
   toast('✅ 분석 탭에 저장했어요');
   if(document.getElementById('a-tab').classList.contains('on')) renderAnalysisTab();
+  if(typeof _renderLiveAnalysisMarkers === 'function') _renderLiveAnalysisMarkers();
 }
 
 function deleteRangeAnalysis(id){
   savedRangeAnalyses = savedRangeAnalyses.filter(a => a.id !== id);
   renderAnalysisTab();
+  if(typeof _renderLiveAnalysisMarkers === 'function') _renderLiveAnalysisMarkers();
+  if(typeof _renderObsAnalysisMarkers === 'function') _renderObsAnalysisMarkers();
 }
 function deleteTangentAnalysis(id){
   savedTangentAnalyses = savedTangentAnalyses.filter(a => a.id !== id);
   renderAnalysisTab();
+  if(typeof _renderLiveAnalysisMarkers === 'function') _renderLiveAnalysisMarkers();
+  if(typeof _renderObsAnalysisMarkers === 'function') _renderObsAnalysisMarkers();
 }
 function clearAllRangeAnalyses(){
   if(!savedRangeAnalyses.length){ toast('지울 분석이 없어요'); return; }
   if(!confirm('저장된 구간 통계 분석을 모두 삭제할까요?')) return;
   savedRangeAnalyses = [];
   renderAnalysisTab();
+  if(typeof _renderLiveAnalysisMarkers === 'function') _renderLiveAnalysisMarkers();
+  if(typeof _renderObsAnalysisMarkers === 'function') _renderObsAnalysisMarkers();
   toast('🗑 구간 통계 분석을 모두 삭제했어요');
 }
 function clearAllTangentAnalyses(){
@@ -6234,6 +6338,8 @@ function clearAllTangentAnalyses(){
   if(!confirm('저장된 두 점 분석을 모두 삭제할까요?')) return;
   savedTangentAnalyses = [];
   renderAnalysisTab();
+  if(typeof _renderLiveAnalysisMarkers === 'function') _renderLiveAnalysisMarkers();
+  if(typeof _renderObsAnalysisMarkers === 'function') _renderObsAnalysisMarkers();
   toast('🗑 두 점 분석을 모두 삭제했어요');
 }
 
@@ -6950,6 +7056,7 @@ function saveCurrentObsRangeAnalysis(btn){
   }
   toast('✅ 분석 탭에 저장했어요');
   if(document.getElementById('a-tab').classList.contains('on')) renderAnalysisTab();
+  if(typeof _renderObsAnalysisMarkers === 'function') _renderObsAnalysisMarkers();
 }
 function saveCurrentObsTangentAnalysis(btn){
   const tan = computeObsTangent();
@@ -6971,6 +7078,7 @@ function saveCurrentObsTangentAnalysis(btn){
   }
   toast('✅ 분석 탭에 저장했어요');
   if(document.getElementById('a-tab').classList.contains('on')) renderAnalysisTab();
+  if(typeof _renderObsAnalysisMarkers === 'function') _renderObsAnalysisMarkers();
 }
 
 // 셋업 호출
@@ -6980,6 +7088,222 @@ if(document.readyState === 'loading'){
   setTimeout(_setupObsSel, 200);
 }
 // ════════════ /수집 그래프 분석 ════════════
+
+// ════════════ 저장된 분석 마커 (그래프 위 시각 표시 + 클릭 재로드) ════════════
+function _renderLiveAnalysisMarkers(){
+  const cont = document.getElementById('live-analysis-markers');
+  if(!cont) return;
+  if(!liveChart || !liveBuf.length){ cont.innerHTML = ''; return; }
+  const ya = liveChart.chartArea;
+  const xs = liveChart.scales.x;
+  if(!ya || !xs){ cont.innerHTML = ''; return; }
+  const seqToPx = (seq) => {
+    if(seq == null) return null;
+    const idx = liveBuf.findIndex(r => r.seq === seq);
+    if(idx < 0) return null;
+    return _bufIdxToPx(idx);
+  };
+  // 마커 위치: 차트 데이터 영역 위쪽 padding 영역에 배치
+  // 구간 통계는 위쪽 줄 (ya.top - 32), 두 점은 그 아래 (ya.top - 8)
+  // 마커 자체 height=24, 화살표가 chartArea.top 직전까지 닿도록 배치
+  const rangeTop = Math.max(2, ya.top - 36);
+  const tanTop = rangeTop; // 같은 줄에 표시 (겹치면 호버 시 z-index로 위로 옴)
+  let html = '';
+  let hasMarkers = false;
+  // 구간 통계 (live)
+  savedRangeAnalyses.filter(a => a.source === 'live').forEach(a => {
+    const sPx = seqToPx(a.startSeq);
+    const ePx = seqToPx(a.endSeq);
+    if(sPx == null || ePx == null) return;
+    if(ePx < ya.left - 1 || sPx > ya.right + 1) return;
+    const x1 = Math.max(ya.left, Math.min(ya.right, sPx));
+    const x2 = Math.max(ya.left, Math.min(ya.right, ePx));
+    const w = Math.max(2, x2 - x1);
+    hasMarkers = true;
+    html += `<div class="analysis-marker range-marker" style="left:${x1}px;top:${rangeTop}px;width:${w}px">
+      <div class="am-bar"></div>
+      <div class="am-pill" onclick="reloadAnalysis('${a.id}')"
+        title="📊 구간 통계 #${a.seq}&#10;${a.startTime} ~ ${a.endTime} (${a.count}개)&#10;클릭하여 다시 보기">
+        <span class="am-icon">📊</span><span class="am-num">${a.seq}</span>
+      </div>
+    </div>`;
+  });
+  // 두 점 분석 (live)
+  savedTangentAnalyses.filter(a => a.source === 'live').forEach(a => {
+    const aPx = seqToPx(a.seqA);
+    const bPx = seqToPx(a.seqB);
+    if(aPx == null || bPx == null) return;
+    if(bPx < ya.left - 1 || aPx > ya.right + 1) return;
+    const x1 = Math.max(ya.left, Math.min(ya.right, aPx));
+    const x2 = Math.max(ya.left, Math.min(ya.right, bPx));
+    const w = Math.max(2, x2 - x1);
+    hasMarkers = true;
+    html += `<div class="analysis-marker tangent-marker" style="left:${x1}px;top:${tanTop}px;width:${w}px">
+      <div class="am-bar"></div>
+      <div class="am-pill" onclick="reloadAnalysis('${a.id}')"
+        title="📐 두 점 분석 #${a.seq}&#10;${a.timeA} → ${a.timeB} (Δt=${(Math.round((a.dt||0)*100)/100)}초)&#10;클릭하여 다시 보기">
+        <span class="am-icon">📐</span><span class="am-num">${a.seq}</span>
+      </div>
+    </div>`;
+  });
+  cont.innerHTML = html;
+  cont.classList.toggle('has-markers', hasMarkers);
+}
+
+function _renderObsAnalysisMarkers(){
+  const cont = document.getElementById('obs-analysis-markers');
+  if(!cont) return;
+  if(!chart || !recs.length){ cont.innerHTML = ''; return; }
+  const ya = chart.chartArea;
+  if(!ya){ cont.innerHTML = ''; return; }
+  const idToPx = (id) => {
+    if(id == null) return null;
+    const idx = recs.findIndex(r => r.id === id);
+    if(idx < 0) return null;
+    return _recIdxToObsPx(idx);
+  };
+  const rangeTop = Math.max(2, ya.top - 36);
+  const tanTop = rangeTop; // 같은 줄에 표시 (겹치면 호버 시 z-index로 위로 옴)
+  let html = '';
+  let hasMarkers = false;
+  savedRangeAnalyses.filter(a => a.source === 'obs').forEach(a => {
+    const sPx = idToPx(a.startId);
+    const ePx = idToPx(a.endId);
+    if(sPx == null || ePx == null) return;
+    if(ePx < ya.left - 1 || sPx > ya.right + 1) return;
+    const x1 = Math.max(ya.left, Math.min(ya.right, sPx));
+    const x2 = Math.max(ya.left, Math.min(ya.right, ePx));
+    const w = Math.max(2, x2 - x1);
+    hasMarkers = true;
+    html += `<div class="analysis-marker range-marker" style="left:${x1}px;top:${rangeTop}px;width:${w}px">
+      <div class="am-bar"></div>
+      <div class="am-pill" onclick="reloadAnalysis('${a.id}')"
+        title="📊 구간 통계 #${a.seq}&#10;#${a.startId} ~ #${a.endId} (${a.count}개)&#10;클릭하여 다시 보기">
+        <span class="am-icon">📊</span><span class="am-num">${a.seq}</span>
+      </div>
+    </div>`;
+  });
+  savedTangentAnalyses.filter(a => a.source === 'obs').forEach(a => {
+    const aPx = idToPx(a.idA);
+    const bPx = idToPx(a.idB);
+    if(aPx == null || bPx == null) return;
+    if(bPx < ya.left - 1 || aPx > ya.right + 1) return;
+    const x1 = Math.max(ya.left, Math.min(ya.right, aPx));
+    const x2 = Math.max(ya.left, Math.min(ya.right, bPx));
+    const w = Math.max(2, x2 - x1);
+    hasMarkers = true;
+    html += `<div class="analysis-marker tangent-marker" style="left:${x1}px;top:${tanTop}px;width:${w}px">
+      <div class="am-bar"></div>
+      <div class="am-pill" onclick="reloadAnalysis('${a.id}')"
+        title="📐 두 점 분석 #${a.seq}&#10;A: #${a.idA} → B: #${a.idB} (Δt=${(Math.round((a.dt||0)*100)/100)}초)&#10;클릭하여 다시 보기">
+        <span class="am-icon">📐</span><span class="am-num">${a.seq}</span>
+      </div>
+    </div>`;
+  });
+  cont.innerHTML = html;
+  cont.classList.toggle('has-markers', hasMarkers);
+}
+
+// 마커 클릭 → 분석 재로드 + 화면 자동 스크롤
+function reloadAnalysis(id){
+  // 구간 통계
+  let a = savedRangeAnalyses.find(x => x.id === id);
+  if(a){
+    if(a.source === 'live'){
+      const s = liveBuf.findIndex(r => r.seq === a.startSeq);
+      const e = liveBuf.findIndex(r => r.seq === a.endSeq);
+      if(s < 0 || e < 0){ toast('해당 데이터가 더 이상 버퍼에 없어요'); return; }
+      // 화면이 라이브 탭이 아니면 전환
+      if(!document.getElementById('l-tab').classList.contains('on')) switchTab('l');
+      // 화면에 안 보이면 자동 이동
+      const total = liveBuf.length;
+      const navMin = Math.max(0, total - LIVE_NAV_MAX);
+      const viewS = _liveViewStart();
+      const viewE = viewS + liveWin - 1;
+      if(e < viewS || s > viewE){
+        const mid = Math.round((s + e) / 2);
+        let newStart = Math.max(navMin, mid - Math.floor(liveWin / 2));
+        if(newStart + liveWin >= total) liveStartIdx = null;
+        else liveStartIdx = newStart;
+        _liveNeedsUpdate = true;
+        flushLiveChart();
+        if(typeof _updateLiveScrollUI === 'function') _updateLiveScrollUI();
+      }
+      liveSel = { startIdx: s, endIdx: e };
+      renderLiveSel();
+      toast('📊 분석 #' + a.seq + ' 재로드');
+    } else {
+      const s = recs.findIndex(r => r.id === a.startId);
+      const e = recs.findIndex(r => r.id === a.endId);
+      if(s < 0 || e < 0){ toast('해당 기록이 더 이상 없어요'); return; }
+      if(!document.getElementById('g-tab').classList.contains('on')) switchTab('g');
+      const total = recs.length;
+      const navMin = Math.max(0, total - LIVE_NAV_MAX);
+      const viewS = _obsViewStart();
+      const viewE = viewS + obsZoom - 1;
+      if(e < viewS || s > viewE){
+        const mid = Math.round((s + e) / 2);
+        let newStart = Math.max(navMin, mid - Math.floor(obsZoom / 2));
+        if(newStart + obsZoom >= total) obsStartIdx = null;
+        else obsStartIdx = newStart;
+        updChart();
+      }
+      obsSel = { startIdx: s, endIdx: e };
+      renderObsSel();
+      toast('📊 분석 #' + a.seq + ' 재로드');
+    }
+    return;
+  }
+  // 두 점 분석
+  a = savedTangentAnalyses.find(x => x.id === id);
+  if(a){
+    if(a.source === 'live'){
+      const aIdx = liveBuf.findIndex(r => r.seq === a.seqA);
+      const bIdx = liveBuf.findIndex(r => r.seq === a.seqB);
+      if(aIdx < 0 || bIdx < 0){ toast('해당 데이터가 더 이상 버퍼에 없어요'); return; }
+      if(!document.getElementById('l-tab').classList.contains('on')) switchTab('l');
+      const total = liveBuf.length;
+      const navMin = Math.max(0, total - LIVE_NAV_MAX);
+      const viewS = _liveViewStart();
+      const viewE = viewS + liveWin - 1;
+      if(bIdx < viewS || aIdx > viewE){
+        const mid = Math.round((aIdx + bIdx) / 2);
+        let newStart = Math.max(navMin, mid - Math.floor(liveWin / 2));
+        if(newStart + liveWin >= total) liveStartIdx = null;
+        else liveStartIdx = newStart;
+        _liveNeedsUpdate = true;
+        flushLiveChart();
+        if(typeof _updateLiveScrollUI === 'function') _updateLiveScrollUI();
+      }
+      liveTangent = { a: aIdx, b: bIdx };
+      _liveTanFirst = null;
+      renderLiveTangent();
+      toast('📐 분석 #' + a.seq + ' 재로드');
+    } else {
+      const aIdx = recs.findIndex(r => r.id === a.idA);
+      const bIdx = recs.findIndex(r => r.id === a.idB);
+      if(aIdx < 0 || bIdx < 0){ toast('해당 기록이 더 이상 없어요'); return; }
+      if(!document.getElementById('g-tab').classList.contains('on')) switchTab('g');
+      const total = recs.length;
+      const navMin = Math.max(0, total - LIVE_NAV_MAX);
+      const viewS = _obsViewStart();
+      const viewE = viewS + obsZoom - 1;
+      if(bIdx < viewS || aIdx > viewE){
+        const mid = Math.round((aIdx + bIdx) / 2);
+        let newStart = Math.max(navMin, mid - Math.floor(obsZoom / 2));
+        if(newStart + obsZoom >= total) obsStartIdx = null;
+        else obsStartIdx = newStart;
+        updChart();
+      }
+      obsTangent = { a: aIdx, b: bIdx };
+      _obsTanFirst = null;
+      renderObsTangent();
+      toast('📐 분석 #' + a.seq + ' 재로드');
+    }
+  }
+}
+// ════════════ /저장된 분석 마커 ════════════
+
 
 function dlLiveCSV(){
   if(!liveBuf.length){toast('💾 저장할 실시간 데이터가 없어요');return;}
